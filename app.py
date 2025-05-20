@@ -502,7 +502,7 @@ def listar_requisiciones():
 
     # 2️⃣ Definir estados según rol y filtro
     rol = current_user.rol_asignado.nombre if current_user.rol_asignado else None
-    if rol == 'Almacén':
+    if rol == 'Almacen':
         if filtro == 'sin_revisar':
             estados = ['Pendiente Revisión Almacén']
         elif filtro == 'por_cotizar':
