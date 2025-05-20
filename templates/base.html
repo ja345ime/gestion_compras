@@ -146,45 +146,36 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNavDropdown">
                 <ul class="navbar-nav mr-auto">
-                    <li class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-home"></i> Inicio
+                    <li class="nav-item dropdown {% if request.endpoint in ['index', 'listar_requisiciones', 'historial_requisiciones', 'crear_requisicion', 'listar_usuarios', 'crear_usuario_admin'] %}active{% endif %}">
+                        <a class="nav-link dropdown-toggle" href="#" id="mainMenuDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-bars"></i> Menú
                         </a>
+                        <div class="dropdown-menu" aria-labelledby="mainMenuDropdown">
+                            <a class="dropdown-item" href="{{ url_for('index') }}">
+                                <i class="fas fa-home"></i> Inicio
+                            </a>
+                            {% if current_user.is_authenticated %}
+                                <a class="dropdown-item" href="{{ url_for('listar_requisiciones') }}">
+                                    <i class="fas fa-tasks"></i> Ver Requisiciones Activas
+                                </a>
+                                <a class="dropdown-item" href="{{ url_for('historial_requisiciones') }}">
+                                    <i class="fas fa-history"></i> Ver Historial
+                                </a>
+                                <a class="dropdown-item" href="{{ url_for('crear_requisicion') }}">
+                                    <i class="fas fa-plus-circle"></i> Crear Requisición
+                                </a>
+                                {% if current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin' %}
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="{{ url_for('listar_usuarios') }}">
+                                        <i class="fas fa-users"></i> Gestionar Usuarios
+                                    </a>
+                                    <a class="dropdown-item" href="{{ url_for('crear_usuario_admin') }}">
+                                        <i class="fas fa-user-plus"></i> Crear Usuario
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
                     </li>
-
-                    {% if current_user.is_authenticated %}
-                        <li class="nav-item {% if request.endpoint == 'listar_requisiciones' %}active{% endif %}">
-                            <a class="nav-link" href="{{ url_for('listar_requisiciones') }}">
-                                <i class="fas fa-tasks"></i> Ver Requisiciones Activas
-                            </a>
-                        </li>
-                        <li class="nav-item {% if request.endpoint == 'historial_requisiciones' %}active{% endif %}">
-                            <a class="nav-link" href="{{ url_for('historial_requisiciones') }}">
-                                <i class="fas fa-history"></i> Ver Historial
-                            </a>
-                        </li>
-                        <li class="nav-item {% if request.endpoint == 'crear_requisicion' %}active{% endif %}">
-                            <a class="nav-link" href="{{ url_for('crear_requisicion') }}">
-                                <i class="fas fa-plus-circle"></i> Crear Requisición
-                            </a>
-                        </li>
-
-                        {% if current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin' %}
-                        <li class="nav-item dropdown {% if request.endpoint in ['listar_usuarios', 'crear_usuario_admin'] %}active{% endif %}">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="fas fa-user-cog"></i> Administración
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="adminDropdown">
-                                <a class="dropdown-item" href="{{ url_for('listar_usuarios') }}">
-                                    <i class="fas fa-users"></i> Gestionar Usuarios
-                                </a>
-                                <a class="dropdown-item" href="{{ url_for('crear_usuario_admin') }}">
-                                    <i class="fas fa-user-plus"></i> Crear Usuario
-                                </a>
-                            </div>
-                        </li>
-                        {% endif %}
-                    {% endif %}
                 </ul>
 
 
