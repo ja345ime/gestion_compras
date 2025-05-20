@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 page-title">Crear Nuevo Usuario</h1>
+
+    <form method="POST" action="{{ url_for('crear_usuario_admin') }}" novalidate>
+        {{ form.hidden_tag() }}
+
+        <fieldset class="mb-3">
+            <legend>Información de la Cuenta</legend>
+            <div class="form-group">
+                {{ form.username.label(class="form-label") }}
+                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="Ej: jPerez") }}
+                {% if form.username.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.username.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group"> {# CAMPO CÉDULA AÑADIDO AQUÍ #}
+                {{ form.cedula.label(class="form-label") }}
+                {{ form.cedula(class="form-control" + (" is-invalid" if form.cedula.errors else ""), placeholder="Ej: V12345678 o 12345678") }}
+                {% if form.cedula.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.cedula.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    {{ form.password.label(class="form-label") }}
+                    {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+                    {% if form.password.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.password.errors %}<span>{{ error }}</span><br>{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-group col-md-6">
+                    {{ form.confirm_password.label(class="form-label") }}
+                    {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+                    {% if form.confirm_password.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.confirm_password.errors %}<span>{{ error }}</span><br>{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-3">
+            <legend>Información Personal y Roles</legend>
+            <div class="form-group">
+                {{ form.nombre_completo.label(class="form-label") }}
+                {{ form.nombre_completo(class="form-control" + (" is-invalid" if form.nombre_completo.errors else ""), placeholder="Ej: Juan Alberto Pérez García") }}
+                {% if form.nombre_completo.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.nombre_completo.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="Ej: jperez@ejemplo.com") }}
+                {% if form.email.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.email.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    {{ form.rol_id.label(class="form-label") }}
+                    {{ form.rol_id(class="form-control" + (" is-invalid" if form.rol_id.errors else "")) }}
+                    {% if form.rol_id.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.rol_id.errors %}<span>{{ error }}</span><br>{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-group col-md-6">
+                    {{ form.departamento_id.label(class="form-label") }}
+                    {{ form.departamento_id(class="form-control" + (" is-invalid" if form.departamento_id.errors else "")) }}
+                    {% if form.departamento_id.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.departamento_id.errors %}<span>{{ error }}</span><br>{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+             <div class="form-group form-check">
+                {{ form.activo(class="form-check-input" + (" is-invalid" if form.activo.errors else "")) }}
+                {{ form.activo.label(class="form-check-label") }}
+                {% if form.activo.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.activo.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </fieldset>
+
+        <div class="form-group mt-4">
+            {{ form.submit(class="btn btn-primary btn-lg") }}
+            <a href="{{ url_for('listar_usuarios') }}" class="btn btn-secondary btn-lg ml-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

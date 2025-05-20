@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title mb-0">Gestión de Usuarios</h1>
+        <a href="{{ url_for('crear_usuario_admin') }}" class="btn btn-success">
+            <i class="fas fa-plus-circle"></i> Crear Nuevo Usuario
+        </a>
+    </div>
+
+    {% if usuarios_paginados.items %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th>Username</th>
+                    <th>Cédula</th> <th>Nombre Completo</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Departamento</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios_paginados.items %}
+                <tr>
+                    <td>{{ usuario.username }}</td>
+                    <td>{{ usuario.cedula }}</td> <td>{{ usuario.nombre_completo or 'N/A' }}</td>
+                    <td>{{ usuario.email or 'N/A' }}</td>
+                    <td>{{ usuario.rol_asignado.nombre if usuario.rol_asignado else 'N/A' }}</td>
+                    <td>{{ usuario.departamento_asignado.nombre if usuario.departamento_asignado else 'N/A' }}</td>
+                    <td>
+                        {% if usuario.activo %}
+                            <span class="badge badge-success">Sí</span>
+                        {% else %}
+                            <span class="badge badge-danger">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Aquí podrías añadir botones para editar o cambiar estado de activación en el futuro #}
+                        <a href="#" class="btn btn-sm btn-info disabled" title="Editar (Próximamente)"><i class="fas fa-edit"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Paginación #}
+    {% if usuarios_paginados.pages > 1 %}
+    <nav aria-label="Paginación de usuarios">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not usuarios_paginados.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('listar_usuarios', page=usuarios_paginados.prev_num) if usuarios_paginados.has_prev else '#'}}">&laquo; Anterior</a>
+            </li>
+            {% for page_num in usuarios_paginados.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if usuarios_paginados.page == page_num %}
+                    <li class="page-item active"><a class="page-link" href="{{ url_for('listar_usuarios', page=page_num) }}">{{ page_num }}</a></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('listar_usuarios', page=page_num) }}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not usuarios_paginados.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('listar_usuarios', page=usuarios_paginados.next_num) if usuarios_paginados.has_next else '#'}}">Siguiente &raquo;</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="alert alert-info">No hay usuarios registrados además del administrador inicial.</div>
+    {% endif %}
+</div>
+{% endblock %}

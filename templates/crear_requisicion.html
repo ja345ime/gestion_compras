@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sistema de Requisiciones</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            padding-top: 20px;
+            padding-bottom: 40px; 
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            max-width: 900px; 
+        }
+        h1, h2 {
+            color: #0056b3; 
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            font-weight: bold;
+            color: #333; 
+            margin-bottom: .5rem; 
+        }
+        .btn-primary { 
+            background-color: #007bff; 
+            border-color: #007bff;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .detalles-item .form-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; 
+            position: relative; 
+        }
+        .detalles-item .form-label {
+            margin-bottom: .3rem; 
+        }
+        .detalles-item .form-row {
+            align-items: flex-end; 
+        }
+        .detalles-item .form-group input,
+        .detalles-item .form-group select {
+            height: calc(1.5em + .75rem + 2px); 
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .detalles-item {
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            position: relative; 
+        }
+        .detalles-header {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #0056b3;
+        }
+        .alert {
+            margin-top: 20px;
+        }
+        .is-invalid {
+            border-color: #dc3545 !important; 
+        }
+        .invalid-feedback {
+            display: block; 
+            color: #dc3545;
+            font-size: 0.875em;
+        }
+        legend {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #0056b3;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+        .field-list-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #0056b3;
+        }
+        .autocomplete-suggestions-container {
+            position: absolute;
+            border: 1px solid #ddd;
+            background-color: white;
+            z-index: 1050; 
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none; 
+            margin-top: 1px; 
+        }
+        .autocomplete-suggestion-item { 
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+        .autocomplete-suggestion-item.active { 
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('crear_requisicion') }}" novalidate>
+            {{ form.hidden_tag() }} 
+
+            <fieldset>
+                <legend>Información del Solicitante</legend>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        {{ form.nombre_solicitante.label }}
+                        {{ form.nombre_solicitante(class="form-control" + (" is-invalid" if form.nombre_solicitante.errors else "")) }}
+                        {% for error in form.nombre_solicitante.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.cedula_solicitante.label }}
+                        {{ form.cedula_solicitante(class="form-control" + (" is-invalid" if form.cedula_solicitante.errors else "")) }}
+                        {% for error in form.cedula_solicitante.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    {{ form.correo_solicitante.label }}
+                    {{ form.correo_solicitante(class="form-control" + (" is-invalid" if form.correo_solicitante.errors else "")) }}
+                    {% for error in form.correo_solicitante.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Detalles de la Requisición</legend>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        {{ form.departamento_nombre.label }}
+                        {{ form.departamento_nombre(class="form-control" + (" is-invalid" if form.departamento_nombre.errors else "")) }}
+                        {% for error in form.departamento_nombre.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.prioridad.label }}
+                        {{ form.prioridad(class="form-control" + (" is-invalid" if form.prioridad.errors else "")) }}
+                        {% for error in form.prioridad.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    {{ form.observaciones.label }}
+                    {{ form.observaciones(class="form-control" + (" is-invalid" if form.observaciones.errors else ""), rows="3") }}
+                    {% for error in form.observaciones.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <h2 class="field-list-header">Productos/Servicios Solicitados</h2>
+            <div id="detalles-container">
+                {% for detalle_subform in form.detalles %}
+                    <div class="detalles-item">
+                        <h3 class="detalles-header">Ítem {{ loop.index }}</h3>
+                        {{ detalle_subform.hidden_tag() }} 
+                        <div class="form-row"> 
+                            <div class="form-group col-md-5">
+                                {{ detalle_subform.producto.label(class="form-label") }}
+                                <input class="form-control autocomplete-producto-input {{ 'is-invalid' if detalle_subform.producto.errors else '' }}" 
+                                       id="{{ detalle_subform.producto.id }}" 
+                                       name="{{ detalle_subform.producto.name }}" 
+                                       type="text" 
+                                       value="{{ detalle_subform.producto.data or '' }}"
+                                       placeholder="{{ detalle_subform.producto.render_kw.get('placeholder', '') if detalle_subform.producto.render_kw else '' }}">
+                                <div class="autocomplete-suggestions-container"></div>
+                                {% for error in detalle_subform.producto.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-group col-md-3">
+                                {{ detalle_subform.cantidad.label(class="form-label") }}
+                                {{ detalle_subform.cantidad(class="form-control" + (" is-invalid" if detalle_subform.cantidad.errors else ""), type="number", step="0.01") }}
+                                {% for error in detalle_subform.cantidad.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-group col-md-4"> 
+                                {{ detalle_subform.unidad_medida.label(class="form-label") }}
+                                <input class="form-control autocomplete-input {{ 'is-invalid' if detalle_subform.unidad_medida.errors else '' }}" 
+                                       id="{{ detalle_subform.unidad_medida.id }}" 
+                                       name="{{ detalle_subform.unidad_medida.name }}" 
+                                       type="text" 
+                                       value="{{ detalle_subform.unidad_medida.data or '' }}"
+                                       placeholder="{{ detalle_subform.unidad_medida.render_kw.get('placeholder', '') if detalle_subform.unidad_medida.render_kw else '' }}">
+                                <div class="autocomplete-suggestions-container"></div> 
+                                {% for error in detalle_subform.unidad_medida.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm remove-detalle" style="display: none;">Eliminar Ítem</button>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button" id="add-detalle" class="btn btn-secondary mt-2 mb-3">Añadir Otro Ítem</button>
+            <hr>
+            {{ form.submit(class="btn btn-primary btn-lg") }}
+            <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-info btn-lg ml-2">Ver Requisiciones</a>
+        </form>
+    </div>
+
+    <script>
+        const unidadesDeMedidaSugerencias = {{ unidades_sugerencias|tojson|safe }};
+        const productosSugerenciasGlobal = {{ productos_sugerencias|tojson|safe }};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const addDetalleButton = document.getElementById('add-detalle');
+            const detallesContainer = document.getElementById('detalles-container');
+            
+            let nextDetalleIndex = {{ form.detalles.entries|length }}; 
+            const minEntries = parseInt("{{ form.detalles.min_entries }}") || 1;
+            const maxEntries = parseInt("{{ form.detalles.max_entries if form.detalles.max_entries is not none else 20 }}");
+
+            function initGenericAutocomplete(inputElement, suggestionsArray) {
+                const suggestionsContainer = inputElement.nextElementSibling; 
+                if (!suggestionsContainer || !suggestionsContainer.classList.contains('autocomplete-suggestions-container')) {
+                    console.error("Contenedor de sugerencias no encontrado para el input:", inputElement, suggestionsContainer);
+                    return;
+                }
+                let activeSuggestionIndex = -1;
+
+                inputElement.addEventListener('input', function() {
+                    const inputValue = this.value.toLowerCase();
+                    suggestionsContainer.innerHTML = ''; 
+                    activeSuggestionIndex = -1; 
+
+                    if (!inputValue.trim()) { 
+                        suggestionsContainer.style.display = 'none';
+                        return;
+                    }
+
+                    const filteredSuggestions = suggestionsArray.filter(s => 
+                        s.toLowerCase().includes(inputValue)
+                    );
+
+                    if (filteredSuggestions.length > 0) {
+                        filteredSuggestions.forEach((suggestionText, index) => {
+                            const div = document.createElement('div');
+                            div.textContent = suggestionText;
+                            div.classList.add('autocomplete-suggestion-item');
+                            div.setAttribute('data-index', index); 
+                            div.addEventListener('click', function() {
+                                inputElement.value = suggestionText;
+                                suggestionsContainer.innerHTML = '';
+                                suggestionsContainer.style.display = 'none';
+                            });
+                            suggestionsContainer.appendChild(div);
+                        });
+                        suggestionsContainer.style.display = 'block';
+                    } else {
+                        suggestionsContainer.style.display = 'none';
+                    }
+                });
+
+                inputElement.addEventListener('keydown', function(e) {
+                    const items = suggestionsContainer.querySelectorAll('.autocomplete-suggestion-item');
+                    if (items.length === 0 || suggestionsContainer.style.display === 'none') return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+                        updateActiveSuggestion(items, activeSuggestionIndex);
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+                        updateActiveSuggestion(items, activeSuggestionIndex);
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (activeSuggestionIndex > -1 && items[activeSuggestionIndex]) {
+                            items[activeSuggestionIndex].click(); 
+                        }
+                    } else if (e.key === 'Escape') {
+                         suggestionsContainer.style.display = 'none';
+                         activeSuggestionIndex = -1;
+                    }
+                });
+                
+                function updateActiveSuggestion(items, index) {
+                    items.forEach(item => item.classList.remove('active'));
+                    if (items[index]) {
+                        items[index].classList.add('active');
+                        items[index].scrollIntoView({ block: 'nearest' });
+                    }
+                }
+
+                document.addEventListener('click', function(e) {
+                    if (!inputElement.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                         suggestionsContainer.style.display = 'none';
+                         activeSuggestionIndex = -1;
+                    }
+                });
+            }
+
+            document.querySelectorAll('.autocomplete-input').forEach(input => { 
+                initGenericAutocomplete(input, unidadesDeMedidaSugerencias);
+            });
+            document.querySelectorAll('.autocomplete-producto-input').forEach(input => { 
+                initGenericAutocomplete(input, productosSugerenciasGlobal);
+            });
+
+
+            addDetalleButton.addEventListener('click', function() {
+                const currentItemCount = detallesContainer.querySelectorAll('.detalles-item').length;
+                if (currentItemCount >= maxEntries) {
+                    alert('Se ha alcanzado el número máximo de ítems: ' + maxEntries);
+                    return;
+                }
+
+                const newEntryDiv = document.createElement('div');
+                newEntryDiv.classList.add('detalles-item');
+                
+                newEntryDiv.innerHTML = `
+                    <h3 class="detalles-header">Ítem ${currentItemCount + 1}</h3> 
+                    <div class="form-row">
+                        <div class="form-group col-md-5">
+                            <label class="form-label" for="detalles-${nextDetalleIndex}-producto">Producto/Servicio</label>
+                            <input class="form-control autocomplete-producto-input" id="detalles-${nextDetalleIndex}-producto" name="detalles-${nextDetalleIndex}-producto" type="text" placeholder="Escriba o seleccione...">
+                            <div class="autocomplete-suggestions-container"></div>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label class="form-label" for="detalles-${nextDetalleIndex}-cantidad">Cantidad</label>
+                            <input class="form-control" id="detalles-${nextDetalleIndex}-cantidad" name="detalles-${nextDetalleIndex}-cantidad" type="number" step="0.01" value="">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label class="form-label" for="detalles-${nextDetalleIndex}-unidad_medida">Unidad de Medida</label>
+                            <input class="form-control autocomplete-input" id="detalles-${nextDetalleIndex}-unidad_medida" name="detalles-${nextDetalleIndex}-unidad_medida" type="text" placeholder="Escriba para buscar...">
+                            <div class="autocomplete-suggestions-container"></div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm remove-detalle">Eliminar Ítem</button>
+                `;
+                
+                detallesContainer.appendChild(newEntryDiv);
+                const newProductoInput = newEntryDiv.querySelector(`#detalles-${nextDetalleIndex}-producto`);
+                if (newProductoInput) {
+                    initGenericAutocomplete(newProductoInput, productosSugerenciasGlobal);
+                }
+                const newUnidadInput = newEntryDiv.querySelector(`#detalles-${nextDetalleIndex}-unidad_medida`);
+                if (newUnidadInput) {
+                    initGenericAutocomplete(newUnidadInput, unidadesDeMedidaSugerencias);
+                }
+                
+                newEntryDiv.querySelector('.remove-detalle').addEventListener('click', handleRemoveDetalle);
+                
+                nextDetalleIndex++; 
+                updateItemUI(); 
+            });
+
+            function handleRemoveDetalle(event) {
+                const currentItemCount = detallesContainer.querySelectorAll('.detalles-item').length;
+                if (currentItemCount > minEntries) {
+                    event.target.closest('.detalles-item').remove();
+                    updateItemUI(); 
+                } else {
+                    alert(`Debe haber al menos ${minEntries} ítem(s) en la requisición.`);
+                }
+            }
+
+            document.querySelectorAll('.remove-detalle').forEach(button => {
+                button.addEventListener('click', handleRemoveDetalle);
+            });
+
+            function updateItemUI() {
+                const items = detallesContainer.querySelectorAll('.detalles-item');
+                items.forEach((item, index) => {
+                    const header = item.querySelector('.detalles-header');
+                    if (header) {
+                        header.textContent = `Ítem ${index + 1}`;
+                    }
+                    
+                    const removeButton = item.querySelector('.remove-detalle');
+                    if (removeButton) {
+                        if (items.length > minEntries) {
+                            removeButton.style.display = ''; 
+                        } else {
+                            removeButton.style.display = 'none'; 
+                        }
+                    }
+                });
+            }
+            
+            updateItemUI(); 
+        });
+    </script>
+</body>
+</html>

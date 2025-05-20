@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+  <h1 class="page-title">Requisiciones — {{ title }}</h1>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Solicitante</th>
+        <th>Fecha</th>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requisiciones %}
+      <tr>
+        <td>{{ req.id }}</td>
+        <td>{{ req.creador.nombre_completo or req.creador.username }}</td>
+        <td>{{ req.fecha_creacion.strftime('%Y-%m-%d') }}</td>
+        <td>{{ req.detalles[0].producto if req.detalles else '' }}</td>
+        <td>{{ req.detalles[0].cantidad if req.detalles else '' }}</td>
+        <td>
+          <a href="{{ url_for('ver_requisicion', requisicion_id=req.id) }}"
+             class="btn btn-info btn-sm">Ver</a>
+          {% if current_user.rol_asignado.nombre == 'Compras' and estado == 'Pendiente de Cotizar' %}
+            <a href="{{ url_for('editar_requisicion', requisicion_id=req.id) }}"
+               class="btn btn-primary btn-sm">Editar</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

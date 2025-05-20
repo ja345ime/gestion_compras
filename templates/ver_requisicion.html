@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ title }}</h1>
+
+<div class="btn-actions mb-4">
+    <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Ver Requisiciones Activas
+    </a>
+    {% if puede_editar %}
+        <a href="{{ url_for('editar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Editar Requisición
+        </a>
+    {% elif not editable_dentro_limite_original and not (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
+         <button type="button" class="btn btn-primary" disabled title="El tiempo para editar esta requisición ha expirado o no tiene permiso.">
+            <i class="fas fa-edit"></i> Editar Requisición
+        </button>
+    {% endif %}
+    
+    {% if puede_eliminar %}
+    <a href="{{ url_for('confirmar_eliminar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-danger">
+        <i class="fas fa-trash-alt"></i> Eliminar
+    </a>
+    {% endif %}
+</div>
+
+{% if not editable_dentro_limite_original and not puede_editar and requisicion.creador_id == current_user.id and not (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
+    <p class="alert alert-warning time-limit-notice mb-3">La edición/eliminación para usted como creador está permitida solo durante los primeros {{ tiempo_limite_minutos }} minutos después de la creación.</p>
+{% elif not editable_dentro_limite_original and puede_editar and (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') and requisicion.creador_id != current_user.id %}
+    <p class="alert alert-info time-limit-notice mb-3">El tiempo límite de edición/eliminación para el creador ha expirado. Solo Administradores pueden editar/eliminar en este punto.</p>
+{% endif %}
+
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        Información General de la Requisición
+        <span class="badge badge-info estado-actual-badge" style="font-size: 1rem;">{{ requisicion.estado }}</span>
+    </div>
+    <div class="card-body">
+        <dl class="row requisicion-info">
+            <dt class="col-sm-3">Número:</dt>
+            <dd class="col-sm-9">{{ requisicion.numero_requisicion }}</dd>
+            
+            <dt class="col-sm-3">Fecha Creación:</dt>
+            <dd class="col-sm-9">{{ requisicion.fecha_creacion.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+            
+            <dt class="col-sm-3">Última Modif.:</dt>
+            <dd class="col-sm-9">{{ requisicion.fecha_modificacion.strftime('%d/%m/%Y %H:%M:%S') if requisicion.fecha_modificacion and requisicion.fecha_modificacion != requisicion.fecha_creacion else '-'}}</dd>
+            
+            <dt class="col-sm-3">Creador:</dt>
+            <dd class="col-sm-9">{{ requisicion.creador.nombre_completo or requisicion.creador.username if requisicion.creador else 'N/D' }}</dd>
+            
+            <dt class="col-sm-3">Solicitante (Form):</dt>
+            <dd class="col-sm-9">{{ requisicion.nombre_solicitante }}</dd>
+            
+            <dt class="col-sm-3">Cédula Solicitante:</dt>
+            <dd class="col-sm-9">{{ requisicion.cedula_solicitante }}</dd>
+            
+            <dt class="col-sm-3">Correo Electrónico:</dt>
+            <dd class="col-sm-9">{{ requisicion.correo_solicitante }}</dd>
+            
+            <dt class="col-sm-3">Departamento:</dt>
+            <dd class="col-sm-9">{{ requisicion.departamento_obj.nombre if requisicion.departamento_obj else 'N/D' }}</dd>
+            
+            <dt class="col-sm-3">Prioridad:</dt>
+            <dd class="col-sm-9">{{ requisicion.prioridad }}</dd>
+            
+            {% if requisicion.observaciones %}
+            <dt class="col-sm-3">Observaciones:</dt>
+            <dd class="col-sm-9" style="white-space: pre-wrap;">{{ requisicion.observaciones|nl2br }}</dd>
+            {% endif %}
+
+            {% if requisicion.comentario_estado %}
+            <dt class="col-sm-3">Comentario de Estado:</dt>
+            <dd class="col-sm-9 text-info" style="white-space: pre-wrap; font-weight: bold;">{{ requisicion.comentario_estado }}</dd>
+            {% endif %}
+        </dl>
+        
+        {% if puede_cambiar_estado %}
+        <hr>
+        <h5 class="mt-3 mb-3">Cambiar Estado de la Requisición</h5>
+        <form method="POST" action="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}">
+            {{ form_estado.hidden_tag() }}
+            <div class="form-row align-items-start">
+                <div class="form-group col-md-4">
+                    {{ form_estado.estado.label(class="form-label sr-only") }}
+                    {{ form_estado.estado(id="selectEstado", class="form-control form-control-sm" + (" is-invalid" if form_estado.estado.errors else "")) }}
+                    {% if form_estado.estado.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form_estado.estado.errors %}<span>{{ error }}</span><br>{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-group col-md-6" id="comentarioEstadoDiv" style="display: none;">
+                    {{ form_estado.comentario_estado.label(class="form-label sr-only") }}
+                    {{ form_estado.comentario_estado(class="form-control form-control-sm" + (" is-invalid" if form_estado.comentario_estado.errors else ""), rows="1", placeholder="Motivo del rechazo/cancelación...") }}
+                    {% if form_estado.comentario_estado.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form_estado.comentario_estado.errors %}<span>{{ error }}</span><br>{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-group col-md-2 align-self-center">
+                    {{ form_estado.submit_estado(class="btn btn-success btn-sm btn-block") }}
+                </div>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="section-title mt-4">Productos/Servicios Solicitados</h2>
+{% if requisicion.detalles %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Producto/Servicio</th>
+                    <th scope="col">Cantidad</th>
+                    <th scope="col">Unidad de Medida</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in requisicion.detalles %}
+                <tr>
+                    <th scope="row">{{ loop.index }}</th>
+                    <td>{{ detalle.producto }}</td>
+                    <td>{{ detalle.cantidad }}</td>
+                    <td>{{ detalle.unidad_medida }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="text-muted">No hay detalles de productos o servicios para esta requisición.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Si heredas scripts de base.html y ese bloque existe #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectEstado = document.getElementById('selectEstado');
+    const comentarioEstadoDiv = document.getElementById('comentarioEstadoDiv');
+    const comentarioTextarea = comentarioEstadoDiv ? comentarioEstadoDiv.querySelector('textarea') : null;
+
+    function toggleComentarioVisibility() {
+        if (!selectEstado || !comentarioEstadoDiv) return;
+
+        const selectedValue = selectEstado.value;
+        // Asegúrate que estos valores coincidan exactamente con los de ESTADOS_REQUISICION en app.py
+        const estadosQueRequierenComentario = ['Rechazada por Almacén', 'Rechazada por Compras', 'Cancelada']; 
+
+        if (estadosQueRequierenComentario.includes(selectedValue)) {
+            comentarioEstadoDiv.style.display = 'block';
+            if(comentarioTextarea) {
+                comentarioTextarea.placeholder = "Motivo del rechazo/cancelación (obligatorio)";
+            }
+        } else {
+            comentarioEstadoDiv.style.display = 'none';
+            if(comentarioTextarea) {
+                 comentarioTextarea.placeholder = "Comentario adicional (opcional)";
+            }
+        }
+    }
+
+    if (selectEstado) {
+        selectEstado.addEventListener('change', toggleComentarioVisibility);
+        // Llamar al cargar para establecer el estado inicial correcto del campo de comentario
+        // basado en el estado actual de la requisición (que ya está seleccionado en el <select>)
+        toggleComentarioVisibility(); 
+    }
+});
+</script>
+{% endblock %}

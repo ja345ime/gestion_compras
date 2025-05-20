@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="mb-4">Bienvenido al Sistema de Compras</h1>
+    <p class="lead">Selecciona una opción para continuar:</p>
+
+    <div class="mt-5 d-flex justify-content-center flex-wrap">
+        <a href="{{ url_for('crear_requisicion') }}" class="btn btn-success btn-lg m-2">
+            <i class="fas fa-plus-circle"></i> Crear Nueva Requisición
+        </a>
+        <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-primary btn-lg m-2">
+            <i class="fas fa-tasks"></i> Ver Requisiciones Activas
+        </a>
+        <a href="{{ url_for('historial_requisiciones') }}" class="btn btn-secondary btn-lg m-2">
+            <i class="fas fa-history"></i> Ver Historial
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+
+<!-- Botones de filtro para Requisiciones Pendientes -->
+<div class="btn-group mb-3" role="group" aria-label="Filtros">
+  <a href="{{ url_for('listar_requisiciones', filtro='todos') }}"
+     class="btn btn-outline-primary {% if filtro=='todos' %}active{% endif %}">
+    Todas
+  </a>
+
+  {% if current_user.rol_asignado.nombre == 'Almacén' %}
+    <a href="{{ url_for('listar_requisiciones', filtro='sin_revisar') }}"
+       class="btn btn-outline-primary {% if filtro=='sin_revisar' %}active{% endif %}">
+      Sin Revisar
+    </a>
+    <a href="{{ url_for('listar_requisiciones', filtro='por_cotizar') }}"
+       class="btn btn-outline-primary {% if filtro=='por_cotizar' %}active{% endif %}">
+      Enviadas a Compra
+    </a>
+  {% elif current_user.rol_asignado.nombre == 'Compras' %}
+    <a href="{{ url_for('listar_requisiciones', filtro='recien_llegadas') }}"
+       class="btn btn-outline-primary {% if filtro=='recien_llegadas' %}active{% endif %}">
+      Llegadas de Almacén
+    </a>
+    <a href="{{ url_for('listar_requisiciones', filtro='por_cotizar') }}"
+       class="btn btn-outline-primary {% if filtro=='por_cotizar' %}active{% endif %}">
+      Pendientes por Cotizar
+    </a>
+  {% endif %}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if requisiciones %}
+    <div class="table-responsive mt-3">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th># Requisición</th>
+                    <th>Fecha Creación</th>
+                    <th>Solicitante</th>
+                    <th>Creador</th>
+                    <th>Departamento</th>
+                    <th>Prioridad</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in requisiciones %}
+                <tr>
+                    <td>{{ req.numero_requisicion }}</td>
+                    <td>{{ req.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>{{ req.nombre_solicitante }}</td>
+                    <td>{{ req.creador.nombre_completo or req.creador.username if req.creador else 'N/D' }}</td>
+                    <td>{{ req.departamento_obj.nombre if req.departamento_obj else 'N/D' }}</td>
+                    <td>{{ req.prioridad }}</td>
+                    <td>{{ req.estado }}</td>
+                    <td>
+                        <!-- Ver -->
+                        <a href="{{ url_for('ver_requisicion', requisicion_id=req.id) }}" class="btn btn-info btn-sm" title="Ver Detalles">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <!-- Editar -->
+                        {% set ahora = datetime.utcnow() %}
+                        {% set editable = req.fecha_creacion and (ahora <= req.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
+                        {% if editable or (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
+                        <a href="{{ url_for('editar_requisicion', requisicion_id=req.id) }}" class="btn btn-warning btn-sm" title="Editar Requisición">
+                            <i class="fas fa-pencil-alt"></i>
+                        </a>
+                        {% endif %}
+                        <!-- Eliminar -->
+                        {% set eliminable = req.fecha_creacion and (ahora <= req.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
+                        {% if eliminable or (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
+                        <a href="{{ url_for('confirmar_eliminar_requisicion', requisicion_id=req.id) }}" class="btn btn-danger btn-sm" title="Eliminar Requisición">
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="no-requisiciones mt-4">No hay requisiciones pendientes para mostrar.</p>
+{% endif %}
+{% endblock %}
