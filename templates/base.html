@@ -170,7 +170,19 @@
                         </li>
 
                         {% if current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin' %}
-                            <!-- aquí tu menú de Administración -->
+                        <li class="nav-item dropdown {% if request.endpoint in ['listar_usuarios', 'crear_usuario_admin'] %}active{% endif %}">
+                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-user-cog"></i> Administración
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="adminDropdown">
+                                <a class="dropdown-item" href="{{ url_for('listar_usuarios') }}">
+                                    <i class="fas fa-users"></i> Gestionar Usuarios
+                                </a>
+                                <a class="dropdown-item" href="{{ url_for('crear_usuario_admin') }}">
+                                    <i class="fas fa-user-plus"></i> Crear Usuario
+                                </a>
+                            </div>
+                        </li>
                         {% endif %}
                     {% endif %}
                 </ul>
