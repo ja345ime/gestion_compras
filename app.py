@@ -984,8 +984,8 @@ def listar_por_estado(estado):
     )
 
 
-def _crear_pdf_minimo(lineas):
-    """Genera un PDF más vistoso con borde y logo."""
+def _crear_pdf_minimo(cabecera, detalles):
+    """Genera un PDF con logo y una tabla ordenada."""
     # Cargar imagen del logo
     logo_path = os.path.join(app.root_path, 'static', 'images', 'logo_granja.jpg')
     try:
@@ -1043,9 +1043,6 @@ def _crear_pdf_minimo(lineas):
     objetos.append(obj3)
 
     contenido = []
-    # Borde
-    contenido.append("2 w")
-    contenido.append("50 50 512 692 re S")
     # Logo
     if draw_logo:
         y_pos = 792 - 50 - pdf_logo_h
@@ -1060,10 +1057,56 @@ def _crear_pdf_minimo(lineas):
     contenido.append("BT")
     contenido.append("/F1 12 Tf")
     contenido.append(f"80 {texto_y} Td")
-    for linea in lineas:
+    for titulo, valor in cabecera:
+        linea = f"{titulo}: {valor}".replace("(", "\\(").replace(")", "\\)")
         contenido.append(f"({linea}) Tj")
         contenido.append("0 -15 Td")
     contenido.append("ET")
+
+    tabla_y = texto_y - (len(cabecera) * 15) - 20
+    row_height = 15
+    col1_x = 80
+    col2_x = 150
+    col3_x = 250
+    total_rows = len(detalles) + 1
+    tabla_height = total_rows * row_height
+
+    contenido.append("1 w")
+    ancho_total = 330  # ancho aproximado de la tabla
+    borde_x = col1_x - 5
+    borde_y = tabla_y - tabla_height - 5
+    contenido.append(f"{borde_x} {borde_y} {ancho_total} {tabla_height + 10} re S")
+    contenido.append(f"{col2_x - 5} {tabla_y} m {col2_x - 5} {tabla_y - tabla_height} l S")
+    contenido.append(f"{col3_x - 5} {tabla_y} m {col3_x - 5} {tabla_y - tabla_height} l S")
+    for i in range(1, total_rows):
+        y = tabla_y - i * row_height
+        contenido.append(f"{borde_x} {y} m {borde_x + ancho_total} {y} l S")
+
+    contenido.append("BT")
+    contenido.append("/F1 12 Tf")
+    contenido.append(f"{col1_x} {tabla_y - 12} Td")
+    contenido.append("(Cantidad) Tj")
+    contenido.append(f"{col2_x - col1_x} 0 Td")
+    contenido.append("(Unidad) Tj")
+    contenido.append(f"{col3_x - col2_x} 0 Td")
+    contenido.append("(Producto) Tj")
+    contenido.append("ET")
+
+    y_text = tabla_y - row_height - 12
+    for cant, unidad, prod in detalles:
+        cantidad = str(cant).replace("(", "\\(").replace(")", "\\)")
+        unidad = str(unidad).replace("(", "\\(").replace(")", "\\)")
+        producto = str(prod).replace("(", "\\(").replace(")", "\\)")
+        contenido.append("BT")
+        contenido.append("/F1 12 Tf")
+        contenido.append(f"{col1_x} {y_text} Td")
+        contenido.append(f"({cantidad}) Tj")
+        contenido.append(f"{col2_x - col1_x} 0 Td")
+        contenido.append(f"({unidad}) Tj")
+        contenido.append(f"{col3_x - col2_x} 0 Td")
+        contenido.append(f"({producto}) Tj")
+        contenido.append("ET")
+        y_text -= row_height
 
     stream = "\n".join(contenido)
     obj4 = (
@@ -1100,19 +1143,25 @@ def _crear_pdf_minimo(lineas):
 
 
 def generar_pdf_requisicion(requisicion):
-    lineas = [
-        f"Requisición: {requisicion.numero_requisicion}",
-        f"Fecha: {requisicion.fecha_creacion.strftime('%d/%m/%Y %H:%M')}",
-        f"Solicitante: {requisicion.nombre_solicitante}",
-        f"Departamento: {requisicion.departamento_obj.nombre if requisicion.departamento_obj else ''}",
-        f"Prioridad: {requisicion.prioridad}",
+    cabecera = [
+        ("Requisición", requisicion.numero_requisicion),
+        ("Fecha", requisicion.fecha_creacion.strftime('%d/%m/%Y %H:%M')),
+        ("Solicitante", requisicion.nombre_solicitante),
+        (
+            "Departamento",
+            requisicion.departamento_obj.nombre if requisicion.departamento_obj else "",
+        ),
+        ("Prioridad", requisicion.prioridad),
     ]
     if requisicion.observaciones:
-        lineas.append(f"Obs: {requisicion.observaciones}")
-    lineas.append("Detalles:")
-    for det in requisicion.detalles:
-        lineas.append(f"- {det.cantidad} {det.unidad_medida} {det.producto}")
-    return _crear_pdf_minimo(lineas)
+        cabecera.append(("Obs", requisicion.observaciones))
+
+    detalles = [
+        (str(det.cantidad), det.unidad_medida, det.producto)
+        for det in requisicion.detalles
+    ]
+
+    return _crear_pdf_minimo(cabecera, detalles)
 
 
 @app.route('/requisicion/<int:requisicion_id>/imprimir')
