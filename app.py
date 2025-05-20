@@ -22,7 +22,7 @@ app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
 app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
 app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
 app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
-app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM')
+app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM', 'jaimegaya@granjalosmolinos.com')
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
@@ -344,7 +344,7 @@ def enviar_correo(destinatarios, asunto, mensaje):
     smtp_port = app.config.get('SMTP_PORT', 587)
     smtp_user = app.config.get('SMTP_USER')
     smtp_password = app.config.get('SMTP_PASSWORD')
-    remitente = app.config.get('MAIL_FROM', smtp_user)
+    remitente = app.config.get('MAIL_FROM') or smtp_user
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
