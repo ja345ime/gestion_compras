@@ -515,7 +515,9 @@ def listar_requisiciones():
         elif filtro == 'por_cotizar':
             estados = ['Pendiente de Cotizar']
         else:
-            estados = ['Aprobada por Almacén', 'Pendiente de Cotizar']
+            estados = ['Pendiente Revisión Almacén',
+                       'Aprobada por Almacén',
+                       'Pendiente de Cotizar']
     else:
         estados = None
 
