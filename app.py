@@ -184,6 +184,15 @@ class UserForm(FlaskForm):
             self.rol_id.choices = [('', 'Error al cargar roles')]
             self.departamento_id.choices = [('0', 'Error al cargar deptos')]
 
+class EditUserForm(UserForm):
+    """Formulario para editar usuarios existentes."""
+    password = PasswordField(
+        'Nueva Contraseña (Opcional)',
+        validators=[Optional(), EqualTo('confirm_password', message='Las contraseñas deben coincidir.')]
+    )
+    confirm_password = PasswordField('Confirmar Contraseña', validators=[Optional()])
+    submit = SubmitField('Actualizar Usuario')
+
 class DetalleRequisicionForm(FlaskForm):
     class Meta:
         csrf = False
@@ -460,6 +469,65 @@ def crear_usuario_admin():
             app.logger.error(f"Error inesperado al crear usuario: {e}", exc_info=True)
             
     return render_template('admin/crear_usuario.html', form=form, title="Crear Nuevo Usuario")
+
+
+@app.route('/admin/usuarios/<int:usuario_id>/editar', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def editar_usuario(usuario_id):
+    usuario = Usuario.query.get_or_404(usuario_id)
+    form = EditUserForm(obj=usuario)
+    if request.method == 'GET':
+        form.departamento_id.data = str(usuario.departamento_id) if usuario.departamento_id else '0'
+        form.password.data = ''
+        form.confirm_password.data = ''
+
+    if form.validate_on_submit():
+        existing_username = Usuario.query.filter(Usuario.username == form.username.data, Usuario.id != usuario.id).first()
+        existing_cedula = Usuario.query.filter(Usuario.cedula == form.cedula.data, Usuario.id != usuario.id).first()
+        existing_email = None
+        if form.email.data:
+            existing_email = Usuario.query.filter(Usuario.email == form.email.data, Usuario.id != usuario.id).first()
+
+        error_occurred = False
+        if existing_username:
+            flash('El nombre de usuario ya existe. Por favor, elige otro.', 'danger')
+            form.username.errors.append('Ya existe.')
+            error_occurred = True
+        if existing_cedula:
+            flash('La cédula ingresada ya está registrada. Por favor, verifique.', 'danger')
+            form.cedula.errors.append('Ya existe.')
+            error_occurred = True
+        if existing_email:
+            flash('El correo electrónico ya está registrado. Por favor, use otro.', 'danger')
+            form.email.errors.append('Ya existe.')
+            error_occurred = True
+
+        if not error_occurred:
+            try:
+                usuario.username = form.username.data
+                usuario.cedula = form.cedula.data
+                usuario.nombre_completo = form.nombre_completo.data
+                usuario.email = form.email.data if form.email.data else None
+                usuario.rol_id = form.rol_id.data
+                depto_str = form.departamento_id.data
+                usuario.departamento_id = int(depto_str) if depto_str and depto_str != '0' else None
+                usuario.activo = form.activo.data
+                if form.password.data:
+                    usuario.set_password(form.password.data)
+                db.session.commit()
+                flash(f'Usuario "{usuario.username}" actualizado exitosamente.', 'success')
+                return redirect(url_for('listar_usuarios'))
+            except IntegrityError as e:
+                db.session.rollback()
+                flash('Error de integridad al actualizar el usuario.', 'danger')
+                app.logger.error(f"Integridad al editar usuario {usuario_id}: {e}")
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Ocurrió un error inesperado al actualizar el usuario: {str(e)}', 'danger')
+                app.logger.error(f"Error inesperado al editar usuario {usuario_id}: {e}", exc_info=True)
+
+    return render_template('admin/editar_usuario.html', form=form, usuario_id=usuario.id, title="Editar Usuario")
 
 # --- Rutas de Requisiciones ---
 @app.route('/')
