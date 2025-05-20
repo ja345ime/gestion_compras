@@ -502,7 +502,7 @@ def listar_requisiciones():
 
     # 2️⃣ Definir estados según rol y filtro
     rol = current_user.rol_asignado.nombre if current_user.rol_asignado else None
-    if rol == 'Almacén':
+    if rol == 'Almacen':
         if filtro == 'sin_revisar':
             estados = ['Pendiente Revisión Almacén']
         elif filtro == 'por_cotizar':
@@ -521,7 +521,7 @@ def listar_requisiciones():
 
     # 3️⃣ Construir consulta base (respeta lógica de Admin vs creador)
     query = Requisicion.query
-    if rol != 'Admin':
+    if rol not in ['Admin', 'Almacen', 'Compras']:
         query = query.filter_by(creador_id=current_user.id)
 
     # 4️⃣ Aplicar filtro de estados
