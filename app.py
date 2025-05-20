@@ -935,23 +935,86 @@ def listar_por_estado(estado):
 
 
 def _crear_pdf_minimo(lineas):
-    """Genera un PDF simple a partir de una lista de cadenas."""
+    """Genera un PDF más vistoso con borde y logo."""
+    # Cargar imagen del logo
+    logo_path = os.path.join(app.root_path, 'static', 'images', 'logo_granja.jpg')
+    try:
+        with open(logo_path, 'rb') as f:
+            logo_bytes = f.read()
+    except Exception:
+        logo_bytes = b''
+
+    def _jpeg_size(data: bytes):
+        import struct
+        if not data.startswith(b'\xff\xd8'):
+            return 0, 0
+        i = 2
+        while i < len(data):
+            if data[i] != 0xFF:
+                break
+            marker = data[i+1]
+            i += 2
+            if marker == 0xDA:  # SOS
+                break
+            length = struct.unpack('>H', data[i:i+2])[0]
+            if marker in (0xC0, 0xC2):
+                height = struct.unpack('>H', data[i+3:i+5])[0]
+                width = struct.unpack('>H', data[i+5:i+7])[0]
+                return width, height
+            i += length
+        return 0, 0
+
+    logo_w, logo_h = _jpeg_size(logo_bytes)
+    if logo_w and logo_h:
+        # Escalamos a 100 puntos de ancho
+        draw_logo = True
+        scale = 100.0 / logo_w
+        pdf_logo_w = 100
+        pdf_logo_h = logo_h * scale
+    else:
+        draw_logo = False
+
     objetos = []
+    # Catalogo y paginas
     obj1 = "1 0 obj\n<< /Type /Catalog\n/Pages 2 0 R >>\nendobj\n"
     objetos.append(obj1)
     obj2 = "2 0 obj\n<< /Type /Pages\n/Kids [3 0 R]\n/Count 1 >>\nendobj\n"
     objetos.append(obj2)
+
+    recursos = "<< /Font << /F1 5 0 R >>"
+    if draw_logo:
+        recursos += " /XObject << /Im1 6 0 R >>"
+    recursos += " >>"
+
     obj3 = (
         "3 0 obj\n<< /Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]"
-        "\n/Contents 4 0 R\n/Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+        f"\n/Contents 4 0 R\n/Resources {recursos} >>\nendobj\n"
     )
     objetos.append(obj3)
 
-    contenido = ["BT", "/F1 12 Tf", "50 750 Td"]
+    contenido = []
+    # Borde
+    contenido.append("2 w")
+    contenido.append("50 50 512 692 re S")
+    # Logo
+    if draw_logo:
+        y_pos = 792 - 50 - pdf_logo_h
+        contenido.append("q")
+        contenido.append(f"{pdf_logo_w} 0 0 {pdf_logo_h} 256 {y_pos} cm")
+        contenido.append("/Im1 Do")
+        contenido.append("Q")
+        texto_y = y_pos - 40
+    else:
+        texto_y = 742
+
+    contenido.append("BT")
+    contenido.append("/F1 12 Tf")
+    contenido.append(f"80 {texto_y} Td")
     for linea in lineas:
         contenido.append(f"({linea}) Tj")
         contenido.append("0 -15 Td")
     contenido.append("ET")
+
     stream = "\n".join(contenido)
     obj4 = (
         f"4 0 obj\n<< /Length {len(stream)} >>\nstream\n{stream}\nendstream\nendobj\n"
@@ -959,6 +1022,14 @@ def _crear_pdf_minimo(lineas):
     objetos.append(obj4)
     obj5 = "5 0 obj\n<< /Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica >>\nendobj\n"
     objetos.append(obj5)
+
+    if draw_logo:
+        obj6 = (
+            f"6 0 obj\n<< /Type /XObject /Subtype /Image /Width {logo_w} /Height {logo_h}"
+            " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode"
+            f" /Length {len(logo_bytes)} >>\nstream\n".encode('latin-1') + logo_bytes + b"\nendstream\nendobj\n"
+        )
+        objetos.append(obj6.decode('latin-1', 'ignore'))
 
     pdf = "%PDF-1.4\n"
     offsets = [0]
