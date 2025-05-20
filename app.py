@@ -521,7 +521,7 @@ def listar_requisiciones():
 
     # 3️⃣ Construir consulta base (respeta lógica de Admin vs creador)
     query = Requisicion.query
-    if rol != 'Admin':
+    if rol not in ['Admin', 'Almacen', 'Compras']:
         query = query.filter_by(creador_id=current_user.id)
 
     # 4️⃣ Aplicar filtro de estados
