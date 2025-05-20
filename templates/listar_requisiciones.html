@@ -11,7 +11,7 @@
     Todas
   </a>
 
-  {% if current_user.rol_asignado.nombre == 'Almacén' %}
+  {% if current_user.rol_asignado.nombre == 'Almacen' %}
     <a href="{{ url_for('listar_requisiciones', filtro='sin_revisar') }}"
        class="btn btn-outline-primary {% if filtro=='sin_revisar' %}active{% endif %}">
       Sin Revisar
