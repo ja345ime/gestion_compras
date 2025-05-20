@@ -742,8 +742,13 @@ def ver_requisicion(requisicion_id):
         if ahora <= requisicion.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
             editable_dentro_limite_original = True
 
-    puede_editar = (editable_dentro_limite_original and requisicion.creador_id == current_user.id) or \
-                   (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin')
+    puede_editar = (
+        requisicion.estado == ESTADO_INICIAL_REQUISICION and
+        editable_dentro_limite_original and
+        requisicion.creador_id == current_user.id
+    ) or (
+        current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
+    )
 
     puede_eliminar = (editable_dentro_limite_original and requisicion.creador_id == current_user.id) or \
                      (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin')
@@ -772,7 +777,8 @@ def editar_requisicion(requisicion_id):
     if requisicion_a_editar.fecha_creacion:
         if ahora <= requisicion_a_editar.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
             dentro_del_limite = True
-    if not ((es_creador and dentro_del_limite) or es_admin):
+    estado_editable = requisicion_a_editar.estado == ESTADO_INICIAL_REQUISICION
+    if not ((es_creador and dentro_del_limite and estado_editable) or es_admin):
         flash('No tiene permiso para editar esta requisición o el tiempo límite ha expirado.', 'danger')
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_editar.id))
 
