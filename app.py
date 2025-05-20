@@ -67,6 +67,7 @@ ESTADOS_HISTORICOS = [
     'Surtida desde Almacén',
     'Rechazada por Almacén',
     'Rechazada por Compras',
+    'Comprada',
     'Cerrada',
     'Cancelada'
 ]
