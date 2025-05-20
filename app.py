@@ -540,6 +540,69 @@ def listar_requisiciones():
         TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION
     )
 
+    try:
+        query = None
+        rol_usuario = current_user.rol_asignado.nombre if hasattr(current_user, 'rol_asignado') and current_user.rol_asignado else None
+        
+        app.logger.debug(f"Listar Requisiciones (Activas) - Usuario: {current_user.username}, Rol: {rol_usuario}")
+
+        if rol_usuario == 'Admin':
+            query = Requisicion.query
+        elif rol_usuario == 'Almacen':
+            # Almacén en activas ve lo que tiene pendiente de revisar, o lo que está comprado y debe recibir
+            query = Requisicion.query.filter(
+                Requisicion.estado.in_([
+                    ESTADO_INICIAL_REQUISICION, # 'Pendiente Revisión Almacén'
+                    'Comprada',                 # Comprada por Compras, pendiente de recepción por Almacén
+                    'Recibida Parcialmente'     # En proceso de recepción por Almacén
+                ])
+            )
+        elif rol_usuario == 'Compras':
+            # Compras en activas ve lo que creó (si no es histórico) O lo que está en su flujo de trabajo activo
+            query = Requisicion.query.filter(
+                db.or_(
+                    db.and_(Requisicion.creador_id == current_user.id, Requisicion.estado.notin_(ESTADOS_HISTORICOS)),
+                    Requisicion.estado.in_([
+                        'Aprobada por Almacén', # Le llega de Almacén
+                        'Pendiente de Cotizar', 
+                        'Aprobada por Compras', 
+                        'En Proceso de Compra', 
+                        'Comprada',             # Para seguimiento hasta que Almacén reciba
+                        'Recibida Parcialmente',# Para seguimiento
+                        'Recibida Completa'     # Para seguimiento y eventual cierre
+                    ])
+                )
+            )
+        else: # Solicitante, JefeDepartamento, Produccion, etc.
+            if hasattr(current_user, 'departamento_asignado') and current_user.departamento_asignado:
+                query = Requisicion.query.filter(
+                    db.or_(
+                        Requisicion.departamento_id == current_user.departamento_id,
+                        Requisicion.creador_id == current_user.id # También ve las que creó, incluso si no son de su depto actual
+                    )
+                )
+            elif hasattr(current_user, 'id'): # Si no tiene departamento pero sí ID
+                query = Requisicion.query.filter_by(creador_id=current_user.id)
+        
+        if query is not None:
+            # Filtro final para asegurar que solo se muestren estados no históricos en esta vista
+            query = query.filter(Requisicion.estado.notin_(ESTADOS_HISTORICOS))
+            todas_las_requisiciones = query.order_by(Requisicion.fecha_creacion.desc()).all()
+        else:
+            todas_las_requisiciones = []
+            app.logger.warning(f"Query para requisiciones activas fue None para {current_user.username}")
+
+    except Exception as e:
+        flash(f"Error al cargar las requisiciones activas: {str(e)}", "danger")
+        app.logger.error(f"Error en listar_requisiciones (activas) para {current_user.username if hasattr(current_user, 'username') else 'desconocido'}: {e}", exc_info=True)
+        todas_las_requisiciones = []
+        
+    return render_template('listar_requisiciones.html',
+                           requisiciones=todas_las_requisiciones,
+                           title="Requisiciones Activas",
+                           vista_actual='activas',
+                           datetime=datetime, 
+                           TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION)
 
 # Nueva Ruta para el HISTORIAL de Requisiciones
 @app.route('/requisiciones/historial')
@@ -898,6 +961,7 @@ def listar_cotizadas():
                            requisiciones=requisiciones,
                            title="Cotizadas",
                            vista_actual='cotizadas')
+from flask import abort
 
 @app.route('/requisiciones/estado/<path:estado>')
 @login_required
