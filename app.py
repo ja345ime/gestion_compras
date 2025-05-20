@@ -11,12 +11,18 @@ from markupsafe import Markup
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from functools import wraps
+import smtplib
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'Jaime2020SuperSeguroConUsuariosYPermisos!'
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'requisiciones.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
+app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
+app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
+app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
+app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM')
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
@@ -311,6 +317,36 @@ def obtener_sugerencias_productos():
         app.logger.error(f"Error al obtener sugerencias de productos: {e}")
         return []
 
+
+def obtener_emails_por_rol(nombre_rol):
+    try:
+        usuarios = Usuario.query.join(Rol).filter(Rol.nombre == nombre_rol, Usuario.activo == True).all()
+        return [u.email for u in usuarios if u.email]
+    except Exception as e:
+        app.logger.error(f"Error obteniendo emails para rol {nombre_rol}: {e}")
+        return []
+
+
+def enviar_correo(destinatarios, asunto, mensaje):
+    smtp_server = app.config.get('SMTP_SERVER')
+    if not smtp_server or not destinatarios:
+        app.logger.warning('SMTP no configurado o sin destinatarios, correo no enviado')
+        return
+    smtp_port = app.config.get('SMTP_PORT', 587)
+    smtp_user = app.config.get('SMTP_USER')
+    smtp_password = app.config.get('SMTP_PASSWORD')
+    remitente = app.config.get('MAIL_FROM', smtp_user)
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            if smtp_user and smtp_password:
+                server.login(smtp_user, smtp_password)
+            msg = f"From: {remitente}\r\nTo: {', '.join(destinatarios)}\r\nSubject: {asunto}\r\n\r\n{mensaje}"
+            server.sendmail(remitente, destinatarios, msg.encode('utf-8'))
+            app.logger.info(f"Correo enviado a {destinatarios} con asunto '{asunto}'")
+    except Exception as e:
+        app.logger.error(f"Error enviando correo: {e}")
+
 # --- Rutas de Autenticación ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -482,6 +518,14 @@ def crear_requisicion():
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
+            emails_compras = obtener_emails_por_rol('Compras')
+            emails_almacen = obtener_emails_por_rol('Almacen')
+            asunto = f"Nueva requisición {nueva_requisicion.numero_requisicion}"
+            mensaje = (
+                f"Se ha creado la requisición {nueva_requisicion.numero_requisicion} "
+                f"por {nueva_requisicion.nombre_solicitante}."
+            )
+            enviar_correo(emails_compras + emails_almacen, asunto, mensaje)
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
             return redirect(url_for('listar_requisiciones'))
         except Exception as e:
@@ -726,6 +770,12 @@ def ver_requisicion(requisicion_id):
 
             try:
                 db.session.commit()
+                asunto = f"Estado actualizado para {requisicion.numero_requisicion}"
+                mensaje = (
+                    f"Su requisición ha cambiado al estado: "
+                    f"{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}."
+                )
+                enviar_correo([requisicion.correo_solicitante], asunto, mensaje)
                 flash_message = f'El estado de la requisición {requisicion.numero_requisicion} ha sido actualizado a "{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}".'
                 if comentario_ingresado_texto:
                     flash_message += " Comentario guardado."
