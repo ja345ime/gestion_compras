@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, abort, make_response
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, FieldList, FormField, PasswordField, BooleanField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
@@ -925,6 +925,78 @@ def listar_por_estado(estado):
         estado=estado,
         vista_actual='estado'
     )
+
+
+def _crear_pdf_minimo(lineas):
+    """Genera un PDF simple a partir de una lista de cadenas."""
+    objetos = []
+    obj1 = "1 0 obj\n<< /Type /Catalog\n/Pages 2 0 R >>\nendobj\n"
+    objetos.append(obj1)
+    obj2 = "2 0 obj\n<< /Type /Pages\n/Kids [3 0 R]\n/Count 1 >>\nendobj\n"
+    objetos.append(obj2)
+    obj3 = (
+        "3 0 obj\n<< /Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]"
+        "\n/Contents 4 0 R\n/Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+    )
+    objetos.append(obj3)
+
+    contenido = ["BT", "/F1 12 Tf", "50 750 Td"]
+    for linea in lineas:
+        contenido.append(f"({linea}) Tj")
+        contenido.append("0 -15 Td")
+    contenido.append("ET")
+    stream = "\n".join(contenido)
+    obj4 = (
+        f"4 0 obj\n<< /Length {len(stream)} >>\nstream\n{stream}\nendstream\nendobj\n"
+    )
+    objetos.append(obj4)
+    obj5 = "5 0 obj\n<< /Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica >>\nendobj\n"
+    objetos.append(obj5)
+
+    pdf = "%PDF-1.4\n"
+    offsets = [0]
+    for obj in objetos:
+        offsets.append(len(pdf))
+        pdf += obj
+    xref_offset = len(pdf)
+
+    pdf += f"xref\n0 {len(objetos) + 1}\n0000000000 65535 f \n"
+    for off in offsets[1:]:
+        pdf += f"{off:010d} 00000 n \n"
+
+    pdf += (
+        "trailer\n<< /Root 1 0 R\n/Size %d >>\nstartxref\n%d\n%%EOF" %
+        (len(objetos) + 1, xref_offset)
+    )
+    return pdf.encode("latin-1")
+
+
+def generar_pdf_requisicion(requisicion):
+    lineas = [
+        f"Requisición: {requisicion.numero_requisicion}",
+        f"Fecha: {requisicion.fecha_creacion.strftime('%d/%m/%Y %H:%M')}",
+        f"Solicitante: {requisicion.nombre_solicitante}",
+        f"Departamento: {requisicion.departamento_obj.nombre if requisicion.departamento_obj else ''}",
+        f"Prioridad: {requisicion.prioridad}",
+    ]
+    if requisicion.observaciones:
+        lineas.append(f"Obs: {requisicion.observaciones}")
+    lineas.append("Detalles:")
+    for det in requisicion.detalles:
+        lineas.append(f"- {det.cantidad} {det.unidad_medida} {det.producto}")
+    return _crear_pdf_minimo(lineas)
+
+
+@app.route('/requisicion/<int:requisicion_id>/imprimir')
+@login_required
+def imprimir_requisicion(requisicion_id):
+    requisicion = Requisicion.query.get_or_404(requisicion_id)
+    pdf_data = generar_pdf_requisicion(requisicion)
+    nombre = f"requisicion_{requisicion.numero_requisicion}.pdf"
+    resp = make_response(pdf_data)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = f'attachment; filename={nombre}'
+    return resp
 
 
 

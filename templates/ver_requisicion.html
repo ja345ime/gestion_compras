@@ -24,6 +24,11 @@
         <i class="fas fa-trash-alt"></i> Eliminar
     </a>
     {% endif %}
+    {% if current_user.rol_asignado and current_user.rol_asignado.nombre in ['Compras', 'Admin'] %}
+    <a href="{{ url_for('imprimir_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-info">
+        <i class="fas fa-print"></i> Imprimir PDF
+    </a>
+    {% endif %}
 </div>
 
 {% if not editable_dentro_limite_original and not puede_editar and requisicion.creador_id == current_user.id and not (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
