@@ -402,11 +402,11 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
 Hola {requisicion.nombre_solicitante},
 
 Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.  
-📌 Estado actual: {nuevo_estado}
+📌 **Estado actual:** {nuevo_estado}
 
-Puedes hacer seguimiento desde el sistema de compras interno de Granja Los Molinos.
+Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.
 
-Si tienes alguna duda, contacta a tu departamento responsable.
+Si tienes alguna duda, por favor contacta a tu departamento responsable.
 
 ---
 
@@ -422,8 +422,8 @@ Hola equipo de Almacén,
 
 Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.
 
-📝 Solicitante: {requisicion.nombre_solicitante}  
-📌 Estado actual: {nuevo_estado}
+📝 **Solicitante:** {requisicion.nombre_solicitante}  
+📌 **Estado actual:** {nuevo_estado}
 
 Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda.
 
@@ -440,8 +440,8 @@ Hola equipo de Compras,
 
 La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.
 
-📝 Solicitante: {requisicion.nombre_solicitante}  
-📌 Estado actual: {nuevo_estado}
+📝 **Solicitante:** {requisicion.nombre_solicitante}  
+📌 **Estado actual:** {nuevo_estado}
 
 Puedes ingresar al sistema de compras interno para continuar con el proceso.
 
