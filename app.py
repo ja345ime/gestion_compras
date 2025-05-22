@@ -14,10 +14,11 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, curren
 from functools import wraps
 import smtplib
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'requisiciones.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
@@ -1271,4 +1272,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         crear_datos_iniciales()
-    app.run(debug=True)
+    app.run(debug=os.environ.get('FLASK_DEBUG') == '1')
