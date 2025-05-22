@@ -341,7 +341,12 @@ def obtener_emails_por_rol(nombre_rol):
         return []
 
 
-def generar_mensaje_correo(rol_destino: str, requisicion: Requisicion, estado_actual: str) -> str:
+def generar_mensaje_correo(
+    rol_destino: str,
+    requisicion: Requisicion,
+    estado_actual: str,
+    motivo: str = "",
+) -> str:
     """Genera el cuerpo de un correo en formato HTML según el destinatario."""
     titulo = ""
     cuerpo = ""
@@ -354,6 +359,8 @@ def generar_mensaje_correo(rol_destino: str, requisicion: Requisicion, estado_ac
             "Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.\n"
             "Si tienes alguna duda, por favor contacta a tu departamento responsable."
         )
+        if 'Rechazada' in estado_actual and motivo:
+            cuerpo += f"\nMotivo del rechazo: {motivo}"
     elif rol_destino == 'Almacén':
         titulo = "Nueva requisición pendiente"
         cuerpo = (
@@ -362,6 +369,8 @@ def generar_mensaje_correo(rol_destino: str, requisicion: Requisicion, estado_ac
             f"Solicitante: {requisicion.nombre_solicitante}\n"
             "Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda."
         )
+        if 'Rechazada' in estado_actual and motivo:
+            cuerpo += f"\nMotivo del rechazo: {motivo}"
     elif rol_destino == 'Compras':
         titulo = "Requisición para compras"
         cuerpo = (
@@ -446,17 +455,23 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
         return False
 
-    mensaje_solicitante = generar_mensaje_correo('Solicitante', requisicion, nuevo_estado)
+    mensaje_solicitante = generar_mensaje_correo(
+        'Solicitante', requisicion, nuevo_estado, comentario or ""
+    )
     enviar_correo([requisicion.correo_solicitante], 'Actualización de tu requisición', mensaje_solicitante)
     app.logger.info(f"Correo enviado a {requisicion.correo_solicitante} con estado {nuevo_estado}")
 
     if nuevo_estado == ESTADO_INICIAL_REQUISICION:
-        mensaje_almacen = generar_mensaje_correo('Almacén', requisicion, nuevo_estado)
+        mensaje_almacen = generar_mensaje_correo(
+            'Almacén', requisicion, nuevo_estado, comentario or ""
+        )
         enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
         app.logger.info(f"Correo enviado al rol Almacen por requisición #{requisicion.id}")
 
     if nuevo_estado == 'Aprobada por Almacén':
-        mensaje_compras = generar_mensaje_correo('Compras', requisicion, nuevo_estado)
+        mensaje_compras = generar_mensaje_correo(
+            'Compras', requisicion, nuevo_estado, comentario or ""
+        )
         enviar_correos_por_rol('Compras', 'Requisición enviada por Almacén', mensaje_compras)
         app.logger.info(f"Correo enviado al rol Compras por requisición #{requisicion.id}")
 
@@ -694,11 +709,15 @@ def crear_requisicion():
 
             db.session.commit()
 
-            mensaje = generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado)
+            mensaje = generar_mensaje_correo(
+                'Solicitante', nueva_requisicion, nueva_requisicion.estado
+            )
             enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
 
             if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
-                mensaje_almacen = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado)
+                mensaje_almacen = generar_mensaje_correo(
+                    'Almacén', nueva_requisicion, nueva_requisicion.estado
+                )
                 enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
 
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
