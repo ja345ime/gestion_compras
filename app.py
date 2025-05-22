@@ -359,8 +359,8 @@ def generar_mensaje_correo(
             "Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.\n"
             "Si tienes alguna duda, por favor contacta a tu departamento responsable."
         )
-        if 'Rechazada' in estado_actual and motivo:
-            cuerpo += f"\nMotivo del rechazo: {motivo}"
+        if estado_actual == 'Rechazada por Almacén' and motivo:
+            cuerpo += f"\n\n⚠️ Motivo del rechazo: {motivo}"
     elif rol_destino == 'Almacén':
         titulo = "Nueva requisición pendiente"
         cuerpo = (
@@ -369,8 +369,8 @@ def generar_mensaje_correo(
             f"Solicitante: {requisicion.nombre_solicitante}\n"
             "Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda."
         )
-        if 'Rechazada' in estado_actual and motivo:
-            cuerpo += f"\nMotivo del rechazo: {motivo}"
+        if estado_actual == 'Rechazada por Almacén' and motivo:
+            cuerpo += f"\n\n⚠️ Motivo del rechazo: {motivo}"
     elif rol_destino == 'Compras':
         titulo = "Requisición para compras"
         cuerpo = (
@@ -710,13 +710,13 @@ def crear_requisicion():
             db.session.commit()
 
             mensaje = generar_mensaje_correo(
-                'Solicitante', nueva_requisicion, nueva_requisicion.estado
+                'Solicitante', nueva_requisicion, nueva_requisicion.estado, ""
             )
             enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
 
             if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
                 mensaje_almacen = generar_mensaje_correo(
-                    'Almacén', nueva_requisicion, nueva_requisicion.estado
+                    'Almacén', nueva_requisicion, nueva_requisicion.estado, ""
                 )
                 enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
 
