@@ -1,5 +1,6 @@
 import pytest
 from flask import url_for
+from uuid import uuid4
 
 from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion, ESTADO_INICIAL_REQUISICION, cambiar_estado_requisicion
 
@@ -25,10 +26,12 @@ def client(app):
 def crear_usuario(username: str, rol_nombre: str, password: str = 'test'):
     rol = Rol.query.filter_by(nombre=rol_nombre).first()
     departamento = Departamento.query.first()
+    sufijo = uuid4().hex[:6]  # Genera un identificador corto y único
+
     usuario = Usuario(
         username=username,
-        cedula='V1234567',
-        email=f'{username}@example.com',
+        cedula=f'V123{uuid4().hex[:6]}',
+        email=f'{username}_{sufijo}@example.com',
         nombre_completo=username.capitalize(),
         rol_id=rol.id,
         departamento_id=departamento.id if departamento else None,
