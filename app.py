@@ -6,7 +6,7 @@ from wtforms import StringField, SelectField, TextAreaField, SubmitField, Decima
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import logging
 from markupsafe import Markup 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -121,8 +121,8 @@ class Requisicion(db.Model):
     __tablename__ = 'requisicion'
     id = db.Column(db.Integer, primary_key=True)
     numero_requisicion = db.Column(db.String(255), unique=True, nullable=False)
-    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    fecha_modificacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    fecha_modificacion = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     nombre_solicitante = db.Column(db.String(255), nullable=False)
     cedula_solicitante = db.Column(db.String(20), nullable=False)
     correo_solicitante = db.Column(db.String(255), nullable=False)
@@ -440,7 +440,7 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
 
     Devuelve ``True`` si la operación se completó correctamente.
     """
-    requisicion = Requisicion.query.get(requisicion_id)
+    requisicion = db.session.get(Requisicion, requisicion_id)
     if not requisicion:
         app.logger.error(f"Requisición {requisicion_id} no encontrada")
         return False
@@ -787,6 +787,7 @@ def listar_requisiciones():
         title="Requisiciones Pendientes",
         vista_actual='activas',
         datetime=datetime,
+        UTC=UTC,
         TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION
     )
 
@@ -853,8 +854,9 @@ def historial_requisiciones():
     return render_template('historial_requisiciones.html',
                            requisiciones=requisiciones_historicas,
                            title="Historial de Requisiciones",
-                           vista_actual='historial', 
-                           datetime=datetime, 
+                           vista_actual='historial',
+                           datetime=datetime,
+                           UTC=UTC,
                            TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION)
 
 
@@ -977,7 +979,7 @@ def ver_requisicion(requisicion_id):
             flash('No se realizaron cambios (mismo estado y sin nuevo comentario o el mismo).', 'info')
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
 
-    ahora = datetime.utcnow()
+    ahora = datetime.now(UTC)
     editable_dentro_limite_original = False
     if requisicion.fecha_creacion:
         if ahora <= requisicion.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
@@ -1013,7 +1015,7 @@ def editar_requisicion(requisicion_id):
     requisicion_a_editar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_editar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.utcnow()
+    ahora = datetime.now(UTC)
     dentro_del_limite = False
     if requisicion_a_editar.fecha_creacion:
         if ahora <= requisicion_a_editar.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
@@ -1082,7 +1084,7 @@ def confirmar_eliminar_requisicion(requisicion_id):
     requisicion = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.utcnow()
+    ahora = datetime.now(UTC)
     dentro_del_limite = False
     if requisicion.fecha_creacion:
         if ahora <= requisicion.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
@@ -1100,7 +1102,7 @@ def eliminar_requisicion_post(requisicion_id):
     requisicion_a_eliminar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_eliminar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.utcnow()
+    ahora = datetime.now(UTC)
     dentro_del_limite = False
     if requisicion_a_eliminar.fecha_creacion:
         if ahora <= requisicion_a_eliminar.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
