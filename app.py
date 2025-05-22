@@ -685,14 +685,38 @@ def crear_requisicion():
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
-            emails_compras = obtener_emails_por_rol('Compras')
-            emails_almacen = obtener_emails_por_rol('Almacen')
-            asunto = f"Nueva requisición {nueva_requisicion.numero_requisicion}"
-            mensaje = (
-                f"Se ha creado la requisición {nueva_requisicion.numero_requisicion} "
-                f"por {nueva_requisicion.nombre_solicitante}."
-            )
-            enviar_correo(emails_compras + emails_almacen, asunto, mensaje)
+
+            # Notificar al solicitante con todos los datos relevantes
+            asunto_solicitante = "Requisición creada"
+            mensaje_solicitante = f"""
+Hola {nueva_requisicion.nombre_solicitante},
+
+Tu requisición #{nueva_requisicion.id} se ha creado correctamente y se encuentra en **{nueva_requisicion.estado}**.
+
+Puedes hacer seguimiento desde el sistema de compras interno.
+
+---
+
+⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización.
+"""
+            enviar_correo([nueva_requisicion.correo_solicitante], asunto_solicitante, mensaje_solicitante)
+
+            # Notificar al equipo de Almacén si corresponde
+            if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
+                mensaje_almacen = f"""
+Hola equipo de Almacén,
+
+El solicitante {nueva_requisicion.nombre_solicitante} ha creado la requisición #{nueva_requisicion.id}.
+📌 **Estado actual:** {nueva_requisicion.estado}
+
+Por favor, ingresa al sistema para revisarla.
+
+---
+
+⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos.
+"""
+                enviar_correos_por_rol('Almacen', asunto_solicitante, mensaje_almacen)
+
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
             return redirect(url_for('listar_requisiciones'))
         except Exception as e:
