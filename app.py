@@ -372,7 +372,7 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
 
 def test_envio_correo():
     """Función de prueba para enviar un correo de verificación"""
-    destinatario = app.config.get('SMTP_USER')
+    destinatario = os.environ.get('EMAIL_TEST') or app.config.get('SMTP_USER')
     asunto = '✅ Prueba de correo desde Sistema de Compras'
     mensaje = (
         'Hola,\n\nEste es un correo de prueba automático enviado desde el sistema '
