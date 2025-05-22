@@ -345,13 +345,11 @@ def generar_mensaje_correo(rol_destino: str, requisicion: Requisicion, estado_ac
         return f"""Hola {requisicion.nombre_solicitante},
 
 Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.
-📌 **Estado actual:** {estado_actual}
+📌 Estado actual: {estado_actual}
 
 Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.
 
 Si tienes alguna duda, por favor contacta a tu departamento responsable.
-
----
 
 ⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización."""
 
@@ -359,13 +357,10 @@ Si tienes alguna duda, por favor contacta a tu departamento responsable.
         return f"""Hola equipo de Almacén,
 
 Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.
-
-📝 **Solicitante:** {requisicion.nombre_solicitante}
-📌 **Estado actual:** {estado_actual}
+📝 Solicitante: {requisicion.nombre_solicitante}
+📌 Estado actual: {estado_actual}
 
 Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda.
-
----
 
 ⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos."""
 
@@ -373,13 +368,10 @@ Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corr
         return f"""Hola equipo de Compras,
 
 La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.
-
-📝 **Solicitante:** {requisicion.nombre_solicitante}
-📌 **Estado actual:** {estado_actual}
+📝 Solicitante: {requisicion.nombre_solicitante}
+📌 Estado actual: {estado_actual}
 
 Puedes ingresar al sistema de compras interno para continuar con el proceso.
-
----
 
 ⚠️ Este mensaje es confidencial y dirigido exclusivamente al equipo de Compras de Granja Los Molinos."""
 
@@ -444,19 +436,17 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
         return
 
-    usuario_actual = current_user
     mensaje_solicitante = generar_mensaje_correo('Solicitante', requisicion, nuevo_estado)
     enviar_correo([requisicion.correo_solicitante], 'Actualización de tu requisición', mensaje_solicitante)
     app.logger.info(f"Correo enviado a {requisicion.correo_solicitante} con estado {nuevo_estado}")
 
-    if nuevo_estado == 'Pendiente Aprobación':
+    if nuevo_estado == ESTADO_INICIAL_REQUISICION:
         mensaje_almacen = generar_mensaje_correo('Almacén', requisicion, nuevo_estado)
         enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
         app.logger.info(f"Correo enviado al rol Almacen por requisición #{requisicion.id}")
 
-    mensaje_compras = generar_mensaje_correo('Compras', requisicion, nuevo_estado)
-
-    if nuevo_estado == 'Aprobado por Almacén (Enviado a Compras)' and usuario_actual.rol_asignado and usuario_actual.rol_asignado.nombre == 'Almacen':
+    if nuevo_estado == 'Aprobada por Almacén':
+        mensaje_compras = generar_mensaje_correo('Compras', requisicion, nuevo_estado)
         enviar_correos_por_rol('Compras', 'Requisición enviada por Almacén', mensaje_compras)
         app.logger.info(f"Correo enviado al rol Compras por requisición #{requisicion.id}")
 
@@ -691,7 +681,14 @@ def crear_requisicion():
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
-            
+
+            mensaje = generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado)
+            enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
+
+            if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
+                mensaje_almacen = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado)
+                enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
+
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
             return redirect(url_for('listar_requisiciones'))
         except Exception as e:
@@ -932,10 +929,7 @@ def ver_requisicion(requisicion_id):
             try:
                 db.session.commit()
                 asunto = f"Estado actualizado para {requisicion.numero_requisicion}"
-                mensaje = (
-                    f"Su requisición ha cambiado al estado: "
-                    f"{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}."
-                )
+                mensaje = generar_mensaje_correo('Solicitante', requisicion, nuevo_estado)
                 enviar_correo([requisicion.correo_solicitante], asunto, mensaje)
                 flash_message = f'El estado de la requisición {requisicion.numero_requisicion} ha sido actualizado a "{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}".'
                 if comentario_ingresado_texto:
