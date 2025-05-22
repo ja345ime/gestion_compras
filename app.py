@@ -421,20 +421,25 @@ def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
         app.logger.warning(f"No se encontraron correos para el rol {nombre_rol}")
 
 
-def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
-    """Actualiza el estado de una requisición y envía notificaciones."""
+def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentario: str | None = None) -> bool:
+    """Actualiza el estado de una requisición y envía notificaciones.
+
+    Devuelve ``True`` si la operación se completó correctamente.
+    """
     requisicion = Requisicion.query.get(requisicion_id)
     if not requisicion:
         app.logger.error(f"Requisición {requisicion_id} no encontrada")
-        return
+        return False
 
     requisicion.estado = nuevo_estado
+    if comentario is not None:
+        requisicion.comentario_estado = comentario
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
-        return
+        return False
 
     mensaje_solicitante = generar_mensaje_correo('Solicitante', requisicion, nuevo_estado)
     enviar_correo([requisicion.correo_solicitante], 'Actualización de tu requisición', mensaje_solicitante)
@@ -449,6 +454,8 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
         mensaje_compras = generar_mensaje_correo('Compras', requisicion, nuevo_estado)
         enviar_correos_por_rol('Compras', 'Requisición enviada por Almacén', mensaje_compras)
         app.logger.info(f"Correo enviado al rol Compras por requisición #{requisicion.id}")
+
+    return True
 
 
 # --- Rutas de Autenticación ---
@@ -707,6 +714,7 @@ def crear_requisicion():
 def listar_requisiciones():
     """Lista las requisiciones visibles para el usuario actual según su rol."""
     rol = current_user.rol_asignado.nombre if current_user.rol_asignado else None
+    filtro = request.args.get('filtro')
 
     # Consulta base
     query = Requisicion.query
@@ -734,11 +742,24 @@ def listar_requisiciones():
         query = query.filter_by(creador_id=current_user.id)
     # Cualquier otro rol (Admin u otros) ve todas las requisiciones
 
+    # -- Filtros adicionales provenientes del parámetro "filtro" --
+    if filtro == 'sin_revisar' and rol == 'Almacen':
+        query = query.filter_by(estado=ESTADO_INICIAL_REQUISICION)
+    elif filtro == 'por_cotizar':
+        if rol == 'Almacen':
+            query = query.filter_by(estado='Aprobada por Almacén')
+        elif rol == 'Compras':
+            query = query.filter_by(estado='Pendiente de Cotizar')
+    elif filtro == 'recien_llegadas' and rol == 'Compras':
+        query = query.filter_by(estado='Aprobada por Almacén')
+    elif filtro == 'todos':
+        pass  # sin filtro adicional
+
     requisiciones = query.order_by(Requisicion.fecha_creacion.desc()).all()
     return render_template(
         'listar_requisiciones.html',
         requisiciones=requisiciones,
-        filtro=None,
+        filtro=filtro,
         title="Requisiciones Pendientes",
         vista_actual='activas',
         datetime=datetime,
@@ -914,30 +935,20 @@ def ver_requisicion(requisicion_id):
         if not any(nuevo_estado == choice[0] for choice in opciones_estado_permitidas):
             flash('Intento de cambio de estado no válido o no permitido para su rol/estado actual.', 'danger')
             return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
-            
+
         comentario_ingresado_texto = form_estado.comentario_estado.data.strip() if form_estado.comentario_estado.data else None
 
         if requisicion.estado != nuevo_estado or (comentario_ingresado_texto and comentario_ingresado_texto != requisicion.comentario_estado):
-            requisicion.estado = nuevo_estado
-            
-            if comentario_ingresado_texto:
-                requisicion.comentario_estado = comentario_ingresado_texto
-            
             if nuevo_estado in ['Rechazada por Almacén', 'Rechazada por Compras', 'Cancelada'] and not comentario_ingresado_texto:
-                 flash('Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.', 'warning')
+                flash('Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.', 'warning')
 
-            try:
-                db.session.commit()
-                asunto = f"Estado actualizado para {requisicion.numero_requisicion}"
-                mensaje = generar_mensaje_correo('Solicitante', requisicion, nuevo_estado)
-                enviar_correo([requisicion.correo_solicitante], asunto, mensaje)
+            if cambiar_estado_requisicion(requisicion.id, nuevo_estado, comentario_ingresado_texto):
                 flash_message = f'El estado de la requisición {requisicion.numero_requisicion} ha sido actualizado a "{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}".'
                 if comentario_ingresado_texto:
                     flash_message += " Comentario guardado."
                 flash(flash_message, 'success')
-            except Exception as e:
-                db.session.rollback()
-                flash(f'Error al actualizar el estado: {str(e)}', 'danger')
+            else:
+                flash('Error al actualizar el estado.', 'danger')
         else:
             flash('No se realizaron cambios (mismo estado y sin nuevo comentario o el mismo).', 'info')
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
@@ -1091,7 +1102,8 @@ def eliminar_requisicion_post(requisicion_id):
 @login_required
 def listar_pendientes_cotizar():
     """Lista las requisiciones cuyo estado sea 'Pendiente de Cotizar'."""
-    if current_user.rol_asignado.nombre == 'Compras':
+    rol_usuario = current_user.rol_asignado.nombre if current_user.rol_asignado else None
+    if rol_usuario == 'Compras':
         requisiciones = Requisicion.query.filter_by(estado='Pendiente de Cotizar').all()
     else:
         requisiciones = Requisicion.query.filter_by(creador_id=current_user.id, estado='Pendiente de Cotizar').all()
@@ -1104,7 +1116,8 @@ def listar_pendientes_cotizar():
 @login_required
 def listar_cotizadas():
     """Lista las requisiciones cuyo estado sea 'Cotizada'."""
-    if current_user.rol_asignado.nombre == 'Compras':
+    rol_usuario = current_user.rol_asignado.nombre if current_user.rol_asignado else None
+    if rol_usuario == 'Compras':
         requisiciones = Requisicion.query.filter_by(estado='Cotizada').all()
     else:
         requisiciones = Requisicion.query.filter_by(creador_id=current_user.id, estado='Cotizada').all()
