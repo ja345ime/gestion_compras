@@ -397,58 +397,62 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
         return
 
-    correo_solicitante = requisicion.correo_solicitante
+    usuario_actual = current_user
+    mensaje_solicitante = f"""
+Hola {requisicion.nombre_solicitante},
+
+Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.  
+📌 Estado actual: {nuevo_estado}
+
+Puedes hacer seguimiento desde el sistema de compras interno de Granja Los Molinos.
+
+Si tienes alguna duda, contacta a tu departamento responsable.
+
+---
+
+⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización.
+"""
+
+    enviar_correo([requisicion.correo_solicitante], 'Actualización de tu requisición', mensaje_solicitante)
+    app.logger.info(f"Correo enviado a {requisicion.correo_solicitante} con estado {nuevo_estado}")
 
     if nuevo_estado == 'Pendiente Aprobación':
-        enviar_correos_por_rol(
-            'Almacen',
-            'Nueva requisición pendiente',
-            f'Se ha creado la requisición #{requisicion.id} para tu revisión.'
-        )
-        enviar_correo(
-            [correo_solicitante],
-            'Requisición enviada',
-            'Tu requisición fue enviada al departamento de Almacén.'
-        )
-        app.logger.info(
-            f"Correos de estado '{nuevo_estado}' enviados a Almacen y {correo_solicitante}"
-        )
-    elif nuevo_estado == 'Aprobada':
-        enviar_correo(
-            [correo_solicitante],
-            'Requisición aprobada',
-            f'Tu requisición #{requisicion.id} fue aprobada.'
-        )
-        app.logger.info(
-            f"Correo enviado a {correo_solicitante} - Requisición aprobada"
-        )
-    elif nuevo_estado == 'Rechazada':
-        enviar_correo(
-            [correo_solicitante],
-            'Requisición rechazada',
-            f'Tu requisición #{requisicion.id} fue rechazada.'
-        )
-        app.logger.info(
-            f"Correo enviado a {correo_solicitante} - Requisición rechazada"
-        )
-    elif nuevo_estado == 'Cotizada':
-        enviar_correos_por_rol(
-            'Compras',
-            'Requisición cotizada',
-            f'La requisición #{requisicion.id} está lista para emitir orden de compra.'
-        )
-        app.logger.info(
-            f"Correos enviados al rol Compras por requisición #{requisicion.id} cotizada"
-        )
-    elif nuevo_estado == 'Finalizada':
-        enviar_correo(
-            [correo_solicitante],
-            'Requisición finalizada',
-            f'Tu requisición #{requisicion.id} fue finalizada.'
-        )
-        app.logger.info(
-            f"Correo enviado a {correo_solicitante} - Requisición finalizada"
-        )
+        mensaje_almacen = f"""
+Hola equipo de Almacén,
+
+Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.
+
+📝 Solicitante: {requisicion.nombre_solicitante}  
+📌 Estado actual: {nuevo_estado}
+
+Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda.
+
+---
+
+⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos.
+"""
+
+        enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
+        app.logger.info(f"Correo enviado al rol Almacen por requisición #{requisicion.id}")
+
+    mensaje_compras = f"""
+Hola equipo de Compras,
+
+La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.
+
+📝 Solicitante: {requisicion.nombre_solicitante}  
+📌 Estado actual: {nuevo_estado}
+
+Puedes ingresar al sistema de compras interno para continuar con el proceso.
+
+---
+
+⚠️ Este mensaje es confidencial y dirigido exclusivamente al equipo de Compras de Granja Los Molinos.
+"""
+
+    if nuevo_estado == 'Aprobado por Almacén (Enviado a Compras)' and usuario_actual.rol_asignado and usuario_actual.rol_asignado.nombre == 'Almacen':
+        enviar_correos_por_rol('Compras', 'Requisición enviada por Almacén', mensaje_compras)
+        app.logger.info(f"Correo enviado al rol Compras por requisición #{requisicion.id}")
 
 
 # --- Rutas de Autenticación ---
