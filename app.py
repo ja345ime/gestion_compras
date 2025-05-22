@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from functools import wraps
 import smtplib
+from email_utils import render_correo_html
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
@@ -340,42 +341,43 @@ def obtener_emails_por_rol(nombre_rol):
 
 
 def generar_mensaje_correo(rol_destino: str, requisicion: Requisicion, estado_actual: str) -> str:
-    """Genera el cuerpo de un correo según el destinatario."""
+    """Genera el cuerpo de un correo en formato HTML según el destinatario."""
+    titulo = ""
+    cuerpo = ""
+
     if rol_destino == 'Solicitante':
-        return f"""Hola {requisicion.nombre_solicitante},
+        titulo = "Actualización de requisición"
+        cuerpo = (
+            f"Hola {requisicion.nombre_solicitante},\n\n"
+            f"Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.\n"
+            "Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.\n"
+            "Si tienes alguna duda, por favor contacta a tu departamento responsable."
+        )
+    elif rol_destino == 'Almacén':
+        titulo = "Nueva requisición pendiente"
+        cuerpo = (
+            "Hola equipo de Almacén,\n\n"
+            f"Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.\n"
+            f"Solicitante: {requisicion.nombre_solicitante}\n"
+            "Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda."
+        )
+    elif rol_destino == 'Compras':
+        titulo = "Requisición para compras"
+        cuerpo = (
+            "Hola equipo de Compras,\n\n"
+            f"La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.\n"
+            f"Solicitante: {requisicion.nombre_solicitante}\n"
+            "Puedes ingresar al sistema de compras interno para continuar con el proceso."
+        )
+    else:
+        return ""
 
-Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.
-📌 Estado actual: {estado_actual}
-
-Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.
-
-Si tienes alguna duda, por favor contacta a tu departamento responsable.
-
-⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización."""
-
-    if rol_destino == 'Almacén':
-        return f"""Hola equipo de Almacén,
-
-Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.
-📝 Solicitante: {requisicion.nombre_solicitante}
-📌 Estado actual: {estado_actual}
-
-Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda.
-
-⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos."""
-
-    if rol_destino == 'Compras':
-        return f"""Hola equipo de Compras,
-
-La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.
-📝 Solicitante: {requisicion.nombre_solicitante}
-📌 Estado actual: {estado_actual}
-
-Puedes ingresar al sistema de compras interno para continuar con el proceso.
-
-⚠️ Este mensaje es confidencial y dirigido exclusivamente al equipo de Compras de Granja Los Molinos."""
-
-    return ""
+    return render_correo_html(
+        titulo=titulo,
+        cuerpo=cuerpo,
+        estado=estado_actual,
+        logo_url='/static/images/logo_granja.jpg'
+    )
 
 
 def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
