@@ -691,11 +691,7 @@ def crear_requisicion():
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
-            emails_compras = obtener_emails_por_rol('Compras')
-            emails_almacen = obtener_emails_por_rol('Almacen')
-            asunto = f"Nueva requisición {nueva_requisicion.numero_requisicion}"
-            mensaje = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado)
-            enviar_correo(emails_compras + emails_almacen, asunto, mensaje)
+            
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
             return redirect(url_for('listar_requisiciones'))
         except Exception as e:
@@ -712,45 +708,40 @@ def crear_requisicion():
 @app.route('/requisiciones')
 @login_required
 def listar_requisiciones():
-    # 1️⃣ Leer parámetro de filtro (por defecto 'todos')
-    filtro = request.args.get('filtro', 'todos')
-
-    # 2️⃣ Definir estados según rol y filtro
+    """Lista las requisiciones visibles para el usuario actual según su rol."""
     rol = current_user.rol_asignado.nombre if current_user.rol_asignado else None
-    if rol == 'Almacen':
-        if filtro == 'sin_revisar':
-            estados = ['Pendiente Revisión Almacén']
-        elif filtro == 'por_cotizar':
-            estados = ['Aprobada por Almacén']
-        else:
-            estados = ['Pendiente Revisión Almacén', 'Aprobada por Almacén']
-    elif rol == 'Compras':
-        if filtro == 'recien_llegadas':
-            estados = ['Aprobada por Almacén']
-        elif filtro == 'por_cotizar':
-            estados = ['Pendiente de Cotizar']
-        else:
-            estados = ['Pendiente Revisión Almacén',
-                       'Aprobada por Almacén',
-                       'Pendiente de Cotizar']
-    else:
-        estados = None
 
-    # 3️⃣ Construir consulta base (respeta lógica de Admin vs creador)
+    # Consulta base
     query = Requisicion.query
-    if rol not in ['Admin', 'Almacen', 'Compras']:
-        query = query.filter_by(creador_id=current_user.id)
 
-    # 4️⃣ Aplicar filtro de estados
-    if estados is not None:
+    if rol == 'Compras':
+        # Requisiciones que maneja el departamento de compras
+        estados = [
+            'Aprobada por Almacén',      # Enviado a Compras
+            'Pendiente de Cotizar',
+            'Cotizada',
+            'Cerrada',                    # Finalizada
+            'Rechazada por Compras'
+        ]
         query = query.filter(Requisicion.estado.in_(estados))
+    elif rol == 'Almacen':
+        # Requisiciones gestionadas por almacén
+        estados = [
+            'Pendiente Revisión Almacén',
+            'Aprobada por Almacén',
+            'Rechazada por Almacén'
+        ]
+        query = query.filter(Requisicion.estado.in_(estados))
+    elif rol == 'Solicitante':
+        # Un solicitante solo ve las requisiciones que él mismo creó
+        query = query.filter_by(creador_id=current_user.id)
+    # Cualquier otro rol (Admin u otros) ve todas las requisiciones
 
-    # 5️⃣ Ejecutar y renderizar
     requisiciones = query.order_by(Requisicion.fecha_creacion.desc()).all()
     return render_template(
         'listar_requisiciones.html',
         requisiciones=requisiciones,
-        filtro=filtro,
+        filtro=None,
         title="Requisiciones Pendientes",
         vista_actual='activas',
         datetime=datetime,
