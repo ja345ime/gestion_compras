@@ -370,13 +370,21 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
         app.logger.error(f"Error enviando correo: {e}")
 
 
-def test_envio_correo() -> None:
-    """Función sencilla para verificar el envío de correos."""
-    destinatario_prueba = app.config.get('SMTP_USER')
-    if destinatario_prueba:
-        enviar_correo([destinatario_prueba], 'Prueba de correo', 'Este es un correo de prueba.')
+def test_envio_correo():
+    """Función de prueba para enviar un correo de verificación"""
+    destinatario = app.config.get('SMTP_USER')
+    asunto = '✅ Prueba de correo desde Sistema de Compras'
+    mensaje = (
+        'Hola,\n\nEste es un correo de prueba automático enviado desde el sistema '
+        'de requisiciones internas de Granja Los Molinos.\n\n'
+        'Si lo estás leyendo, el envío SMTP funciona correctamente.\n\n'
+        'Saludos,\nSistema de Compras'
+    )
+    if destinatario:
+        enviar_correo([destinatario], asunto, mensaje)
+        app.logger.info(f"Correo de prueba enviado a {destinatario}")
     else:
-        app.logger.warning('No se definió SMTP_USER para la prueba de correo')
+        app.logger.warning("SMTP_USER no definido, no se pudo enviar el correo.")
 
 # --- Rutas de Autenticación ---
 @app.route('/login', methods=['GET', 'POST'])
