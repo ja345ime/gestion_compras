@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from functools import wraps
 import smtplib
+from email.mime.text import MIMEText
 from email_utils import render_correo_html
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -400,13 +401,15 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
             if smtp_user and smtp_password:
                 server.login(smtp_user, smtp_password)
 
-            msg = (
-                f"From: {remitente}\r\n"
-                f"To: {', '.join(destinatarios)}\r\n"
-                f"Subject: {asunto}\r\n\r\n{mensaje}"
+            msg = MIMEText(mensaje, 'html', 'utf-8')
+            msg['Subject'] = asunto
+            msg['From'] = remitente
+            msg['To'] = ', '.join(destinatarios)
+
+            server.send_message(msg)
+            app.logger.info(
+                f"Correo enviado a {destinatarios} con asunto '{asunto}'"
             )
-            server.sendmail(remitente, destinatarios, msg.encode('utf-8'))
-            app.logger.info(f"Correo enviado a {destinatarios} con asunto '{asunto}'")
     except Exception as e:
         app.logger.error(f"Error enviando correo: {e}")
 
