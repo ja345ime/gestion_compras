@@ -15,6 +15,7 @@ from functools import wraps
 import smtplib
 from email.mime.text import MIMEText
 from email_utils import render_correo_html
+import base64
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
@@ -382,12 +383,62 @@ def generar_mensaje_correo(
     else:
         return ""
 
-    return render_correo_html(
-        titulo=titulo,
-        cuerpo=cuerpo,
-        estado=estado_actual,
-        logo_url='/static/images/logo_granja.jpg'
-    )
+    logo_path = os.path.join(app.root_path, 'static', 'images', 'logo_granja.jpg')
+    try:
+        with open(logo_path, 'rb') as f:
+            logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+            logo_html = f'<img src="data:image/jpeg;base64,{logo_base64}" style="max-height:60px;">'
+    except Exception:
+        logo_html = 'Logo Granja Los Molinos'
+
+    cuerpo_html = "<br>".join(cuerpo.splitlines())
+
+    color_encabezado = "#1D1455"
+    color_boton = "#F99C1B"
+    color_fondo_pie = "#f0f0f0"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html lang=\"es\">
+    <head>
+        <meta charset=\"UTF-8\">
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+        <title>{titulo}</title>
+    </head>
+    <body style=\"font-family: Arial, Helvetica, sans-serif; margin:0; padding:0;\">
+        <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">
+            <tr>
+                <td style=\"background-color:{color_encabezado}; padding:20px; text-align:center;\">
+                    {logo_html}
+                </td>
+            </tr>
+            <tr>
+                <td style=\"background-color:#ffffff; padding:30px;\">
+                    <h2 style=\"color:{color_encabezado}; margin-top:0;\">{titulo}</h2>
+                    <p>Hola,</p>
+                    <p>{cuerpo_html}</p>
+                    <p style=\"margin:20px 0;\">
+                        <span style=\"background-color:{color_encabezado}; color:#ffffff; padding:8px 12px; border-radius:4px;\">
+                            {estado_actual}
+                        </span>
+                    </p>
+                    <p style=\"text-align:center; margin:30px 0;\">
+                        <a href=\"#\" style=\"background-color:{color_boton}; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:4px;\">
+                            Ingresar al sistema
+                        </a>
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td style=\"background-color:{color_fondo_pie}; color:#666666; font-size:12px; padding:15px; text-align:center;\">
+                    Este mensaje es confidencial y está dirigido solo a su destinatario. Si lo recibió por error, por favor elimínelo.
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    return html
 
 
 def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
