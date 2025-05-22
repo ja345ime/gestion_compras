@@ -370,21 +370,86 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
         app.logger.error(f"Error enviando correo: {e}")
 
 
-def test_envio_correo():
-    """Función de prueba para enviar un correo de verificación"""
-    destinatario = os.environ.get('EMAIL_TEST') or app.config.get('SMTP_USER')
-    asunto = '✅ Prueba de correo desde Sistema de Compras'
-    mensaje = (
-        'Hola,\n\nEste es un correo de prueba automático enviado desde el sistema '
-        'de requisiciones internas de Granja Los Molinos.\n\n'
-        'Si lo estás leyendo, el envío SMTP funciona correctamente.\n\n'
-        'Saludos,\nSistema de Compras'
-    )
-    if destinatario:
-        enviar_correo([destinatario], asunto, mensaje)
-        app.logger.info(f"Correo de prueba enviado a {destinatario}")
+def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
+    """Envía correos a todos los usuarios activos de un rol dado."""
+    destinatarios = obtener_emails_por_rol(nombre_rol)
+    if destinatarios:
+        enviar_correo(destinatarios, asunto, mensaje)
+        app.logger.info(
+            f"Notificación enviada a rol {nombre_rol}: {asunto} -> {destinatarios}"
+        )
     else:
-        app.logger.warning("SMTP_USER no definido, no se pudo enviar el correo.")
+        app.logger.warning(f"No se encontraron correos para el rol {nombre_rol}")
+
+
+def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
+    """Actualiza el estado de una requisición y envía notificaciones."""
+    requisicion = Requisicion.query.get(requisicion_id)
+    if not requisicion:
+        app.logger.error(f"Requisición {requisicion_id} no encontrada")
+        return
+
+    requisicion.estado = nuevo_estado
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
+        return
+
+    correo_solicitante = requisicion.correo_solicitante
+
+    if nuevo_estado == 'Pendiente Aprobación':
+        enviar_correos_por_rol(
+            'Almacen',
+            'Nueva requisición pendiente',
+            f'Se ha creado la requisición #{requisicion.id} para tu revisión.'
+        )
+        enviar_correo(
+            [correo_solicitante],
+            'Requisición enviada',
+            'Tu requisición fue enviada al departamento de Almacén.'
+        )
+        app.logger.info(
+            f"Correos de estado '{nuevo_estado}' enviados a Almacen y {correo_solicitante}"
+        )
+    elif nuevo_estado == 'Aprobada':
+        enviar_correo(
+            [correo_solicitante],
+            'Requisición aprobada',
+            f'Tu requisición #{requisicion.id} fue aprobada.'
+        )
+        app.logger.info(
+            f"Correo enviado a {correo_solicitante} - Requisición aprobada"
+        )
+    elif nuevo_estado == 'Rechazada':
+        enviar_correo(
+            [correo_solicitante],
+            'Requisición rechazada',
+            f'Tu requisición #{requisicion.id} fue rechazada.'
+        )
+        app.logger.info(
+            f"Correo enviado a {correo_solicitante} - Requisición rechazada"
+        )
+    elif nuevo_estado == 'Cotizada':
+        enviar_correos_por_rol(
+            'Compras',
+            'Requisición cotizada',
+            f'La requisición #{requisicion.id} está lista para emitir orden de compra.'
+        )
+        app.logger.info(
+            f"Correos enviados al rol Compras por requisición #{requisicion.id} cotizada"
+        )
+    elif nuevo_estado == 'Finalizada':
+        enviar_correo(
+            [correo_solicitante],
+            'Requisición finalizada',
+            f'Tu requisición #{requisicion.id} fue finalizada.'
+        )
+        app.logger.info(
+            f"Correo enviado a {correo_solicitante} - Requisición finalizada"
+        )
+
 
 # --- Rutas de Autenticación ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -1280,5 +1345,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         crear_datos_iniciales()
-        test_envio_correo()  # Prueba de envío SMTP al arrancar
     app.run(debug=os.environ.get('FLASK_DEBUG') == '1')
