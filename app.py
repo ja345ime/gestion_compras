@@ -15,7 +15,7 @@ from functools import wraps
 import smtplib
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'Jaime2020SuperSeguroConUsuariosYPermisos!'
+app.config['SECRET_KEY'] = 'Jaime2020'
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'requisiciones.db')
