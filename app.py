@@ -1,5 +1,6 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, make_response
+from dotenv import load_dotenv
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, FieldList, FormField, PasswordField, BooleanField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
@@ -16,6 +17,7 @@ import smtplib
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'Jaime2020SuperSeguroConUsuariosYPermisos!'
 basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'requisiciones.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
@@ -336,25 +338,44 @@ def obtener_emails_por_rol(nombre_rol):
         return []
 
 
-def enviar_correo(destinatarios, asunto, mensaje):
+def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
+    """Envía un correo usando los datos configurados en las variables de entorno."""
     smtp_server = app.config.get('SMTP_SERVER')
     if not smtp_server or not destinatarios:
         app.logger.warning('SMTP no configurado o sin destinatarios, correo no enviado')
         return
+
     smtp_port = app.config.get('SMTP_PORT', 587)
     smtp_user = app.config.get('SMTP_USER')
     smtp_password = app.config.get('SMTP_PASSWORD')
-    remitente = app.config.get('MAIL_FROM', smtp_user)
+    remitente = app.config.get('MAIL_FROM') or smtp_user
+
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()
             server.starttls()
+            server.ehlo()
             if smtp_user and smtp_password:
                 server.login(smtp_user, smtp_password)
-            msg = f"From: {remitente}\r\nTo: {', '.join(destinatarios)}\r\nSubject: {asunto}\r\n\r\n{mensaje}"
+
+            msg = (
+                f"From: {remitente}\r\n"
+                f"To: {', '.join(destinatarios)}\r\n"
+                f"Subject: {asunto}\r\n\r\n{mensaje}"
+            )
             server.sendmail(remitente, destinatarios, msg.encode('utf-8'))
             app.logger.info(f"Correo enviado a {destinatarios} con asunto '{asunto}'")
     except Exception as e:
         app.logger.error(f"Error enviando correo: {e}")
+
+
+def test_envio_correo() -> None:
+    """Función sencilla para verificar el envío de correos."""
+    destinatario_prueba = app.config.get('SMTP_USER')
+    if destinatario_prueba:
+        enviar_correo([destinatario_prueba], 'Prueba de correo', 'Este es un correo de prueba.')
+    else:
+        app.logger.warning('No se definió SMTP_USER para la prueba de correo')
 
 # --- Rutas de Autenticación ---
 @app.route('/login', methods=['GET', 'POST'])
