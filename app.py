@@ -339,6 +339,53 @@ def obtener_emails_por_rol(nombre_rol):
         return []
 
 
+def generar_mensaje_correo(rol_destino: str, requisicion: Requisicion, estado_actual: str) -> str:
+    """Genera el cuerpo de un correo según el destinatario."""
+    if rol_destino == 'Solicitante':
+        return f"""Hola {requisicion.nombre_solicitante},
+
+Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.
+📌 **Estado actual:** {estado_actual}
+
+Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.
+
+Si tienes alguna duda, por favor contacta a tu departamento responsable.
+
+---
+
+⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización."""
+
+    if rol_destino == 'Almacén':
+        return f"""Hola equipo de Almacén,
+
+Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.
+
+📝 **Solicitante:** {requisicion.nombre_solicitante}
+📌 **Estado actual:** {estado_actual}
+
+Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda.
+
+---
+
+⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos."""
+
+    if rol_destino == 'Compras':
+        return f"""Hola equipo de Compras,
+
+La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.
+
+📝 **Solicitante:** {requisicion.nombre_solicitante}
+📌 **Estado actual:** {estado_actual}
+
+Puedes ingresar al sistema de compras interno para continuar con el proceso.
+
+---
+
+⚠️ Este mensaje es confidencial y dirigido exclusivamente al equipo de Compras de Granja Los Molinos."""
+
+    return ""
+
+
 def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
     """Envía un correo usando los datos configurados en las variables de entorno."""
     smtp_server = app.config.get('SMTP_SERVER')
@@ -398,57 +445,16 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str) -> None:
         return
 
     usuario_actual = current_user
-    mensaje_solicitante = f"""
-Hola {requisicion.nombre_solicitante},
-
-Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.  
-📌 **Estado actual:** {nuevo_estado}
-
-Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.
-
-Si tienes alguna duda, por favor contacta a tu departamento responsable.
-
----
-
-⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización.
-"""
-
+    mensaje_solicitante = generar_mensaje_correo('Solicitante', requisicion, nuevo_estado)
     enviar_correo([requisicion.correo_solicitante], 'Actualización de tu requisición', mensaje_solicitante)
     app.logger.info(f"Correo enviado a {requisicion.correo_solicitante} con estado {nuevo_estado}")
 
     if nuevo_estado == 'Pendiente Aprobación':
-        mensaje_almacen = f"""
-Hola equipo de Almacén,
-
-Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.
-
-📝 **Solicitante:** {requisicion.nombre_solicitante}  
-📌 **Estado actual:** {nuevo_estado}
-
-Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda.
-
----
-
-⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos.
-"""
-
+        mensaje_almacen = generar_mensaje_correo('Almacén', requisicion, nuevo_estado)
         enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
         app.logger.info(f"Correo enviado al rol Almacen por requisición #{requisicion.id}")
 
-    mensaje_compras = f"""
-Hola equipo de Compras,
-
-La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.
-
-📝 **Solicitante:** {requisicion.nombre_solicitante}  
-📌 **Estado actual:** {nuevo_estado}
-
-Puedes ingresar al sistema de compras interno para continuar con el proceso.
-
----
-
-⚠️ Este mensaje es confidencial y dirigido exclusivamente al equipo de Compras de Granja Los Molinos.
-"""
+    mensaje_compras = generar_mensaje_correo('Compras', requisicion, nuevo_estado)
 
     if nuevo_estado == 'Aprobado por Almacén (Enviado a Compras)' and usuario_actual.rol_asignado and usuario_actual.rol_asignado.nombre == 'Almacen':
         enviar_correos_por_rol('Compras', 'Requisición enviada por Almacén', mensaje_compras)
@@ -685,38 +691,7 @@ def crear_requisicion():
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
-
-            # Notificar al solicitante con todos los datos relevantes
-            asunto_solicitante = "Requisición creada"
-            mensaje_solicitante = f"""
-Hola {nueva_requisicion.nombre_solicitante},
-
-Tu requisición #{nueva_requisicion.id} se ha creado correctamente y se encuentra en **{nueva_requisicion.estado}**.
-
-Puedes hacer seguimiento desde el sistema de compras interno.
-
----
-
-⚠️ Este mensaje es confidencial. No debe ser compartido fuera de Granja Los Molinos ni reenviado sin autorización.
-"""
-            enviar_correo([nueva_requisicion.correo_solicitante], asunto_solicitante, mensaje_solicitante)
-
-            # Notificar al equipo de Almacén si corresponde
-            if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
-                mensaje_almacen = f"""
-Hola equipo de Almacén,
-
-El solicitante {nueva_requisicion.nombre_solicitante} ha creado la requisición #{nueva_requisicion.id}.
-📌 **Estado actual:** {nueva_requisicion.estado}
-
-Por favor, ingresa al sistema para revisarla.
-
----
-
-⚠️ Este mensaje es confidencial y dirigido únicamente al equipo de Almacén de Granja Los Molinos.
-"""
-                enviar_correos_por_rol('Almacen', asunto_solicitante, mensaje_almacen)
-
+            
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
             return redirect(url_for('listar_requisiciones'))
         except Exception as e:
