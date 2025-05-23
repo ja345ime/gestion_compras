@@ -81,6 +81,7 @@ ESTADOS_REQUISICION_DICT = dict(ESTADOS_REQUISICION)
 ESTADOS_HISTORICOS = [
     'Surtida desde Almacén',
     'Rechazada por Almacén',
+    'Aprobada por Compras',
     'Rechazada por Compras',
     'Comprada',
     'Cerrada',
@@ -816,9 +817,7 @@ def listar_requisiciones():
         estados = [
             'Aprobada por Almacén',      # Enviado a Compras
             'Pendiente de Cotizar',
-            'Cotizada',
-            'Aprobada por Compras',
-            'En Proceso de Compra'
+
         ]
         query = query.filter(Requisicion.estado.in_(estados))
     elif rol == 'Almacen':
@@ -983,7 +982,7 @@ def ver_requisicion(requisicion_id):
         elif requisicion.estado == 'Aprobada por Compras':
             opciones_estado_permitidas = [
                 ('Aprobada por Compras', ESTADOS_REQUISICION_DICT['Aprobada por Compras']),
-                ('En Proceso de Compra', ESTADOS_REQUISICION_DICT['En Proceso de Compra']),
+                ('Comprada', ESTADOS_REQUISICION_DICT['Comprada']),
                 ('Cancelada', ESTADOS_REQUISICION_DICT['Cancelada'])
             ]
         elif requisicion.estado == 'En Proceso de Compra':
