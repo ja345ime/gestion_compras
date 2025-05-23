@@ -142,6 +142,22 @@ def test_aprobacion_por_compras_envia_correo(app, mocker):
     print("Correos enviados (compras):", enviar.call_args_list)
 
 
+def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
+    enviar = mocker.patch('app.enviar_correo')
+    solicitante = crear_usuario('solpc', 'Solicitante')
+    compras_user = crear_usuario('compraspc', 'Compras')
+    req = crear_requisicion_para(solicitante)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén')
+    enviar.reset_mock()
+
+    cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar')
+    db.session.refresh(req)
+    assert req.estado == 'Pendiente de Cotizar'
+    assert enviar.call_count >= 1
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(compras_user.email in dest for dest in destinatarios_list)
+
+
 def test_cambio_a_comprada_historial(app, client, mocker):
     enviar = mocker.patch('app.enviar_correo')
     solicitante = crear_usuario('sol5', 'Solicitante')
