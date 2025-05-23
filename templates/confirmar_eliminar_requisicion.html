@@ -31,9 +31,11 @@
     {% endif %}
 </div>
 
-<form method="POST" action="{{ url_for('eliminar_requisicion_post', requisicion_id=requisicion.id) }}" class="d-inline">
-    {{ csrf_token() }}
-    <button type="submit" class="btn btn-danger">Sí, Eliminar Requisición</button>
-</form>
-<a href="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-secondary">Cancelar</a>
+<div class="text-center mt-4">
+    <form method="POST" action="{{ url_for('eliminar_requisicion_post', requisicion_id=requisicion.id) }}" class="d-inline-block">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger">Sí, Eliminar Requisición</button>
+    </form>
+    <a href="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-secondary ml-2">Cancelar</a>
+</div>
 {% endblock %}
