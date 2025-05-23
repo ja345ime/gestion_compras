@@ -1049,18 +1049,32 @@ def ver_requisicion(requisicion_id):
     puede_eliminar = (editable_dentro_limite_original and requisicion.creador_id == current_user.id) or \
                      (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin')
 
-    puede_cambiar_estado = (current_user.rol_asignado and current_user.rol_asignado.nombre in ['Admin', 'Compras', 'Almacen'] and len(opciones_estado_permitidas) > 1) or \
-                           (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin')
-                           
-    return render_template('ver_requisicion.html',
-                           requisicion=requisicion,
-                           title=f"Detalle Requisición {requisicion.numero_requisicion}",
-                           puede_editar=puede_editar,
-                           puede_eliminar=puede_eliminar,
-                           editable_dentro_limite_original=editable_dentro_limite_original,
-                           tiempo_limite_minutos=int(TIEMPO_LIMITE_EDICION_REQUISICION.total_seconds() / 60),
-                           form_estado=form_estado,
-                           puede_cambiar_estado=puede_cambiar_estado)
+    puede_cambiar_estado = (
+        current_user.rol_asignado
+        and current_user.rol_asignado.nombre in ['Admin', 'Compras', 'Almacen']
+        and len(opciones_estado_permitidas) > 1
+    ) or (
+        current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
+    )
+
+    creador_usuario = getattr(requisicion, 'creador', None)
+    departamento_asignado = getattr(requisicion, 'departamento_obj', None)
+
+    return render_template(
+        'ver_requisicion.html',
+        requisicion=requisicion,
+        creador=creador_usuario,
+        departamento=departamento_asignado,
+        title=f"Detalle Requisición {requisicion.numero_requisicion}",
+        puede_editar=puede_editar,
+        puede_eliminar=puede_eliminar,
+        editable_dentro_limite_original=editable_dentro_limite_original,
+        tiempo_limite_minutos=int(
+            TIEMPO_LIMITE_EDICION_REQUISICION.total_seconds() / 60
+        ),
+        form_estado=form_estado,
+        puede_cambiar_estado=puede_cambiar_estado,
+    )
 
 @app.route('/requisicion/<int:requisicion_id>/editar', methods=['GET', 'POST'])
 @login_required
