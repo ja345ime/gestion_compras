@@ -367,6 +367,10 @@ def generar_mensaje_correo(
         )
         if estado_actual == 'Rechazada por Almacén' and motivo:
             cuerpo += f"\n\n⚠️ Motivo del rechazo: {motivo}"
+        cuerpo += (
+            "\n---\n"
+            "Este mensaje fue generado autom\u00e1ticamente por el sistema de compras de Granja Los Molinos. No responder a este correo."
+        )
     elif rol_destino == 'Almacén':
         titulo = "Nueva requisición pendiente"
         cuerpo = (
@@ -378,6 +382,10 @@ def generar_mensaje_correo(
         )
         if estado_actual == 'Rechazada por Almacén' and motivo:
             cuerpo += f"\n\n⚠️ Motivo del rechazo: {motivo}"
+        cuerpo += (
+            "\n---\n"
+            "Este mensaje fue generado autom\u00e1ticamente por el sistema de compras de Granja Los Molinos. No responder a este correo."
+        )
     elif rol_destino == 'Compras':
         titulo = "Requisición para compras"
         cuerpo = (
@@ -386,6 +394,10 @@ def generar_mensaje_correo(
             f"Solicitante: {requisicion.nombre_solicitante}\n"
             f"Prioridad: {requisicion.prioridad}\n"
             "Puedes ingresar al sistema de compras interno para continuar con el proceso."
+        )
+        cuerpo += (
+            "\n---\n"
+            "Este mensaje fue generado autom\u00e1ticamente por el sistema de compras de Granja Los Molinos. No responder a este correo."
         )
     else:
         return ""
