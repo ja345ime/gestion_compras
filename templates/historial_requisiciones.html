@@ -54,7 +54,9 @@
                     <td>{{ req.nombre_solicitante }}</td>
                     <td>{{ req.creador.nombre_completo or req.creador.username if req.creador else 'N/D' }}</td>
                     <td>{{ req.departamento_obj.nombre if req.departamento_obj else 'N/D' }}</td>
-                    <td>{{ req.prioridad }}</td>
+                    <td class="{% if req.prioridad == 'Alta' %}prioridad-alta{% elif req.prioridad == 'Media' %}prioridad-media{% elif req.prioridad == 'Baja' %}prioridad-baja{% endif %}">
+                        {{ req.prioridad }}
+                    </td>
                     <td>{{ req.estado }}</td>
                     <td>
                         <a href="{{ url_for('ver_requisicion', requisicion_id=req.id) }}" class="btn btn-info btn-sm action-icon" title="Ver Detalles">
