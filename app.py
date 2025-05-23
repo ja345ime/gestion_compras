@@ -360,6 +360,7 @@ def generar_mensaje_correo(
         cuerpo = (
             f"Hola {requisicion.nombre_solicitante},\n\n"
             f"Te informamos que tu requisición #{requisicion.id} ha cambiado de estado.\n"
+            f"Prioridad: {requisicion.prioridad}\n"
             "Puedes hacer seguimiento completo desde el sistema de compras interno de Granja Los Molinos.\n"
             "Si tienes alguna duda, por favor contacta a tu departamento responsable."
         )
@@ -371,6 +372,7 @@ def generar_mensaje_correo(
             "Hola equipo de Almacén,\n\n"
             f"Se ha creado una nueva requisición interna con el número #{requisicion.id} que requiere su revisión y aprobación.\n"
             f"Solicitante: {requisicion.nombre_solicitante}\n"
+            f"Prioridad: {requisicion.prioridad}\n"
             "Por favor, ingresa al sistema para revisarla, aprobarla o rechazarla según corresponda."
         )
         if estado_actual == 'Rechazada por Almacén' and motivo:
@@ -381,6 +383,7 @@ def generar_mensaje_correo(
             "Hola equipo de Compras,\n\n"
             f"La requisición #{requisicion.id} fue aprobada por el departamento de Almacén y ahora se encuentra bajo su responsabilidad para cotización o gestión de compra.\n"
             f"Solicitante: {requisicion.nombre_solicitante}\n"
+            f"Prioridad: {requisicion.prioridad}\n"
             "Puedes ingresar al sistema de compras interno para continuar con el proceso."
         )
     else:
