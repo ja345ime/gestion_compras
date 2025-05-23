@@ -1035,8 +1035,8 @@ def ver_requisicion(requisicion_id):
             flash('No se realizaron cambios (mismo estado y sin nuevo comentario o el mismo).', 'info')
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
 
-    # Convertimos a un objeto naive para compararlo con fecha_creacion
-    ahora = datetime.utcnow().replace(tzinfo=None)
+    # Usamos un datetime con zona horaria UTC para evitar errores de comparación
+    ahora = datetime.now(UTC)
     editable_dentro_limite_original = False
     if requisicion.fecha_creacion:
         if ahora <= requisicion.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
