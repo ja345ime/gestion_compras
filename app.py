@@ -817,8 +817,8 @@ def listar_requisiciones():
             'Aprobada por Almacén',      # Enviado a Compras
             'Pendiente de Cotizar',
             'Cotizada',
-            'Cerrada',                    # Finalizada
-            'Rechazada por Compras'
+            'Aprobada por Compras',
+            'En Proceso de Compra'
         ]
         query = query.filter(Requisicion.estado.in_(estados))
     elif rol == 'Almacen':
