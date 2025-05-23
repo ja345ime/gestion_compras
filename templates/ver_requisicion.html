@@ -55,7 +55,13 @@
             <dd class="col-sm-9">{{ requisicion.fecha_modificacion.strftime('%d/%m/%Y %H:%M:%S') if requisicion.fecha_modificacion and requisicion.fecha_modificacion != requisicion.fecha_creacion else '-'}}</dd>
             
             <dt class="col-sm-3">Creador:</dt>
-            <dd class="col-sm-9">{{ requisicion.creador.nombre_completo or requisicion.creador.username if requisicion.creador else 'N/D' }}</dd>
+            <dd class="col-sm-9">
+                {% if creador %}
+                    {{ creador.nombre_completo or creador.username }}
+                {% else %}
+                    N/D
+                {% endif %}
+            </dd>
             
             <dt class="col-sm-3">Solicitante (Form):</dt>
             <dd class="col-sm-9">{{ requisicion.nombre_solicitante }}</dd>
@@ -67,7 +73,7 @@
             <dd class="col-sm-9">{{ requisicion.correo_solicitante }}</dd>
             
             <dt class="col-sm-3">Departamento:</dt>
-            <dd class="col-sm-9">{{ requisicion.departamento_obj.nombre if requisicion.departamento_obj else 'N/D' }}</dd>
+            <dd class="col-sm-9">{{ departamento.nombre if departamento else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Prioridad:</dt>
             <dd class="col-sm-9">{{ requisicion.prioridad }}</dd>
