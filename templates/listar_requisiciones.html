@@ -78,15 +78,16 @@
                             <i class="fas fa-eye"></i>
                         </a>
                         <!-- Editar -->
-                        {% set ahora = datetime.now(UTC) %}
-                        {% set editable = req.fecha_creacion and (ahora <= req.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
+                        {% set ahora = datetime.now(UTC).replace(tzinfo=None) %}
+                        {% set fecha_creacion = req.fecha_creacion.replace(tzinfo=None) if req.fecha_creacion else None %}
+                        {% set editable = fecha_creacion and (ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
                         {% if editable or (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
                         <a href="{{ url_for('editar_requisicion', requisicion_id=req.id) }}" class="btn btn-warning btn-sm" title="Editar Requisición">
                             <i class="fas fa-pencil-alt"></i>
                         </a>
                         {% endif %}
                         <!-- Eliminar -->
-                        {% set eliminable = req.fecha_creacion and (ahora <= req.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
+                        {% set eliminable = fecha_creacion and (ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
                         {% if eliminable or (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
                         <a href="{{ url_for('confirmar_eliminar_requisicion', requisicion_id=req.id) }}" class="btn btn-danger btn-sm" title="Eliminar Requisición">
                             <i class="fas fa-trash-alt"></i>
