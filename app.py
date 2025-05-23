@@ -244,10 +244,15 @@ class RequisicionForm(FlaskForm):
 
 class CambiarEstadoForm(FlaskForm):
     estado = SelectField('Nuevo Estado', choices=ESTADOS_REQUISICION, validators=[DataRequired()])
-    comentario_estado = TextAreaField('Comentario/Motivo:', 
+    comentario_estado = TextAreaField('Comentario/Motivo:',
                                    validators=[Optional(), Length(max=500)],
                                    render_kw={"rows": 2, "placeholder": "Si rechaza o necesita aclarar, ingrese un comentario..."})
     submit_estado = SubmitField('Actualizar Estado')
+
+
+class ConfirmarEliminarForm(FlaskForm):
+    """Formulario simple para confirmar la eliminación de una requisición."""
+    submit = SubmitField('Sí, Eliminar Requisición')
 
 # --- Decorador de Permisos ---
 def admin_required(f):
@@ -1176,13 +1181,16 @@ def confirmar_eliminar_requisicion(requisicion_id):
     if not ((es_creador and dentro_del_limite) or es_admin):
         flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
+    form = ConfirmarEliminarForm()
     return render_template('confirmar_eliminar_requisicion.html',
                            requisicion=requisicion,
+                           form=form,
                            title=f"Confirmar Eliminación: {requisicion.numero_requisicion}")
 
 @app.route('/requisicion/<int:requisicion_id>/eliminar', methods=['POST'])
 @login_required
 def eliminar_requisicion_post(requisicion_id):
+    form = ConfirmarEliminarForm()
     requisicion_a_eliminar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_eliminar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
@@ -1195,6 +1203,9 @@ def eliminar_requisicion_post(requisicion_id):
     if not ((es_creador and dentro_del_limite) or es_admin):
         flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_eliminar.id))
+    if not form.validate_on_submit():
+        flash('Petición inválida.', 'danger')
+        return redirect(url_for('confirmar_eliminar_requisicion', requisicion_id=requisicion_id))
     try:
         db.session.delete(requisicion_a_eliminar)
         db.session.commit()
