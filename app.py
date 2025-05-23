@@ -1484,4 +1484,5 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         crear_datos_iniciales()
-    app.run(debug=os.environ.get('FLASK_DEBUG') == '1')
+    # Ejecutar con `flask run` o gunicorn
+    # app.run(debug=os.environ.get('FLASK_DEBUG') == '1')
