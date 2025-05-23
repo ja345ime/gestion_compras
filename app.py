@@ -534,6 +534,15 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
         enviar_correos_por_rol('Compras', 'Requisición enviada por Almacén', mensaje_compras)
         app.logger.info(f"Correo enviado al rol Compras por requisición #{requisicion.id}")
 
+    if nuevo_estado == 'Pendiente de Cotizar':
+        mensaje_compras = generar_mensaje_correo(
+            'Compras', requisicion, nuevo_estado, comentario or ""
+        )
+        enviar_correos_por_rol('Compras', 'Requisición pendiente por cotizar', mensaje_compras)
+        app.logger.info(
+            f"Correo enviado al rol Compras (pendiente por cotizar) por requisición #{requisicion.id}"
+        )
+
     return True
 
 
