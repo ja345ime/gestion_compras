@@ -388,7 +388,9 @@ def generar_mensaje_correo(
         with open(logo_path, 'rb') as f:
             logo_base64 = base64.b64encode(f.read()).decode('utf-8')
             logo_html = f'<img src="data:image/jpeg;base64,{logo_base64}" style="max-height:60px;">'
-    except Exception:
+    except Exception as e:
+        print(e)
+        app.logger.error(f"Error cargando logo: {e}")
         logo_html = 'Logo Granja Los Molinos'
 
     cuerpo_html = "<br>".join(cuerpo.splitlines())
