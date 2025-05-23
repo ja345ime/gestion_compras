@@ -68,7 +68,9 @@
                     <td>{{ req.nombre_solicitante }}</td>
                     <td>{{ req.creador.nombre_completo or req.creador.username if req.creador else 'N/D' }}</td>
                     <td>{{ req.departamento_obj.nombre if req.departamento_obj else 'N/D' }}</td>
-                    <td>{{ req.prioridad }}</td>
+                    <td class="{% if req.prioridad == 'Alta' %}bg-danger-light{% elif req.prioridad == 'Media' %}bg-warning-light{% elif req.prioridad == 'Baja' %}bg-success-light{% endif %}">
+                        {{ req.prioridad }}
+                    </td>
                     <td>{{ req.estado }}</td>
                     <td>
                         <!-- Ver -->

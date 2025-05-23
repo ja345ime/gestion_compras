@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, make_response
 from dotenv import load_dotenv
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, FieldList, FormField, PasswordField, BooleanField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 from flask_sqlalchemy import SQLAlchemy
@@ -36,6 +36,9 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, inicie sesión para acceder a esta página."
 login_manager.login_message_category = "info"
+
+csrf = CSRFProtect()
+csrf.init_app(app)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -432,8 +435,8 @@ def generar_mensaje_correo(
                 </td>
             </tr>
             <tr>
-                <td style=\"background-color:{color_fondo_pie}; color:#666666; font-size:12px; padding:15px; text-align:center;\">
-                    Este mensaje es confidencial y está dirigido solo a su destinatario. Si lo recibió por error, por favor elimínelo.
+                <td style=\"background-color:#ffffff; color:#666666; font-size:12px; padding:15px; text-align:center;\">
+                    Este mensaje es confidencial y está dirigido solo a su destinatario. No responda a este correo, ya que es enviado desde una cuenta automática.
                 </td>
             </tr>
         </table>
