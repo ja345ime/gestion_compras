@@ -1,75 +1,39 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - Sistema de Requisiciones</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-            padding-top: 40px; /* Más padding superior */
-            padding-bottom: 40px;
-        }
-        .container {
-            max-width: 600px; /* Contenedor más estrecho para confirmación */
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            text-align: center; /* Centrar contenido */
-        }
-        h1 {
-            color: #dc3545; /* Rojo para advertencia */
-            margin-bottom: 20px;
-        }
-        .lead {
-            font-size: 1.1rem;
-            margin-bottom: 25px;
-        }
-        .requisicion-details {
-            text-align: left;
-            margin-bottom: 30px;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            border: 1px solid #eee;
-        }
-        .requisicion-details strong {
-            color: #0056b3;
-        }
-        .btn-danger {
-            margin-right: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>{{ title }}</h1>
-        <p class="lead">¿Está seguro de que desea eliminar permanentemente la siguiente requisición? 
-            <br><strong>Esta acción no se puede deshacer.</strong>
-        </p>
+{% extends "base.html" %}
 
-        <div class="requisicion-details">
-            <p><strong>Número de Requisición:</strong> {{ requisicion.numero_requisicion }}</p>
-            <p><strong>Solicitante:</strong> {{ requisicion.nombre_solicitante }}</p>
-            <p><strong>Fecha de Creación:</strong> {{ requisicion.fecha_creacion.strftime('%d/%m/%Y') }}</p>
-            {% if requisicion.detalles|length > 0 %}
-            <p><strong>Primer Producto:</strong> {{ requisicion.detalles[0].producto }} (y {{ requisicion.detalles|length - 1 }} más ítems si aplica)</p>
-            {% endif %}
-        </div>
+{% block title %}{{ title }}{% endblock %}
 
-        <form method="POST" action="{{ url_for('eliminar_requisicion_post', requisicion_id=requisicion.id) }}" style="display: inline;">
-            {{ csrf_token() }}
-            <button type="submit" class="btn btn-danger btn-lg">Sí, Eliminar Requisición</button>
-        </form>
-        <a href="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-secondary btn-lg">Cancelar</a>
-    </div>
+{% block head_styles %}
+<style>
+.requisicion-details {
+    text-align: left;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    border: 1px solid #eee;
+}
+.requisicion-details strong {
+    color: #0056b3;
+}
+</style>
+{% endblock %}
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-</html>
+{% block content %}
+<h1 class="page-title text-danger">{{ title }}</h1>
+<p class="lead">¿Está seguro de que desea eliminar permanentemente la siguiente requisición?<br><strong>Esta acción no se puede deshacer.</strong></p>
+
+<div class="requisicion-details">
+    <p><strong>Número de Requisición:</strong> {{ requisicion.numero_requisicion }}</p>
+    <p><strong>Solicitante:</strong> {{ requisicion.nombre_solicitante }}</p>
+    <p><strong>Fecha de Creación:</strong> {{ requisicion.fecha_creacion.strftime('%d/%m/%Y') }}</p>
+    {% if requisicion.detalles|length > 0 %}
+    <p><strong>Primer Producto:</strong> {{ requisicion.detalles[0].producto }} (y {{ requisicion.detalles|length - 1 }} más ítems si aplica)</p>
+    {% endif %}
+</div>
+
+<form method="POST" action="{{ url_for('eliminar_requisicion_post', requisicion_id=requisicion.id) }}" class="d-inline">
+    {{ csrf_token() }}
+    <button type="submit" class="btn btn-danger">Sí, Eliminar Requisición</button>
+</form>
+<a href="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-secondary">Cancelar</a>
+{% endblock %}
