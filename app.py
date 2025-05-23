@@ -1039,10 +1039,11 @@ def ver_requisicion(requisicion_id):
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
 
     # Usamos un datetime con zona horaria UTC para evitar errores de comparación
-    ahora = datetime.now(UTC)
+    ahora = datetime.now(UTC).replace(tzinfo=None)
     editable_dentro_limite_original = False
     if requisicion.fecha_creacion:
-        if ahora <= requisicion.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
+        fecha_creacion = requisicion.fecha_creacion.replace(tzinfo=None)
+        if ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
             editable_dentro_limite_original = True
 
     puede_editar = (
@@ -1089,10 +1090,11 @@ def editar_requisicion(requisicion_id):
     requisicion_a_editar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_editar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.now(UTC)
+    ahora = datetime.now(UTC).replace(tzinfo=None)
     dentro_del_limite = False
     if requisicion_a_editar.fecha_creacion:
-        if ahora <= requisicion_a_editar.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
+        fecha_creacion = requisicion_a_editar.fecha_creacion.replace(tzinfo=None)
+        if ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
             dentro_del_limite = True
     estado_editable = requisicion_a_editar.estado == ESTADO_INICIAL_REQUISICION
     if not ((es_creador and dentro_del_limite and estado_editable) or es_admin):
@@ -1158,10 +1160,11 @@ def confirmar_eliminar_requisicion(requisicion_id):
     requisicion = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.now(UTC)
+    ahora = datetime.now(UTC).replace(tzinfo=None)
     dentro_del_limite = False
     if requisicion.fecha_creacion:
-        if ahora <= requisicion.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
+        fecha_creacion = requisicion.fecha_creacion.replace(tzinfo=None)
+        if ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
             dentro_del_limite = True
     if not ((es_creador and dentro_del_limite) or es_admin):
         flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
@@ -1176,10 +1179,11 @@ def eliminar_requisicion_post(requisicion_id):
     requisicion_a_eliminar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_eliminar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.now(UTC)
+    ahora = datetime.now(UTC).replace(tzinfo=None)
     dentro_del_limite = False
     if requisicion_a_eliminar.fecha_creacion:
-        if ahora <= requisicion_a_eliminar.fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
+        fecha_creacion = requisicion_a_eliminar.fecha_creacion.replace(tzinfo=None)
+        if ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
             dentro_del_limite = True
     if not ((es_creador and dentro_del_limite) or es_admin):
         flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
