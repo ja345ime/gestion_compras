@@ -816,8 +816,7 @@ def listar_requisiciones():
         # Requisiciones gestionadas por almacén
         estados = [
             'Pendiente Revisión Almacén',
-            'Aprobada por Almacén',
-            'Rechazada por Almacén'
+            'Aprobada por Almacén'
         ]
         query = query.filter(Requisicion.estado.in_(estados))
     elif rol == 'Solicitante':
