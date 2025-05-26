@@ -6,7 +6,10 @@ from wtforms import StringField, SelectField, TextAreaField, SubmitField, Decima
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
+
+# Compatibilidad para versiones anteriores a Python 3.11
+UTC = timezone.utc
 import logging
 from markupsafe import Markup 
 from werkzeug.security import generate_password_hash, check_password_hash
