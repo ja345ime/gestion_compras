@@ -808,25 +808,25 @@ def crear_requisicion():
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
-
-            mensaje = generar_mensaje_correo(
-                'Solicitante', nueva_requisicion, nueva_requisicion.estado, ""
-            )
-            enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
-
-            if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
-                mensaje_almacen = generar_mensaje_correo(
-                    'Almacén', nueva_requisicion, nueva_requisicion.estado, ""
-                )
-                enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
-
-            guardar_pdf_requisicion(nueva_requisicion)
-            flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
-            return redirect(url_for('requisicion_creada', requisicion_id=nueva_requisicion.id))
         except Exception as e:
             db.session.rollback()
             flash(f'Error al crear la requisición: {str(e)}', 'danger')
             app.logger.error(f"Error en crear_requisicion: {e}", exc_info=True)
+        else:
+            try:
+                mensaje = generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado, "")
+                enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
+
+                if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
+                    mensaje_almacen = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado, "")
+                    enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
+
+                guardar_pdf_requisicion(nueva_requisicion)
+            except Exception as e:
+                app.logger.error(f"Error tras crear requisición {nueva_requisicion.id}: {e}", exc_info=True)
+
+            flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
+            return redirect(url_for('requisicion_creada', requisicion_id=nueva_requisicion.id))
     
     productos_sugerencias = obtener_sugerencias_productos()
     return render_template('crear_requisicion.html', form=form, title="Crear Nueva Requisición",
@@ -1489,16 +1489,22 @@ def generar_pdf_requisicion(requisicion):
 
 
 def guardar_pdf_requisicion(requisicion):
-    """Genera y guarda el PDF de la requisición en static/pdf/."""
-    pdf_bytes = generar_pdf_requisicion(requisicion)
+    """Genera y guarda el PDF de la requisición en ``static/pdf/``.
+
+    Cualquier error al generar o almacenar el archivo se registra en
+    ``app.log`` pero no se propaga, de modo que no bloquee el flujo
+    de creación de la requisición.
+    """
     pdf_dir = os.path.join(app.root_path, 'static', 'pdf')
     os.makedirs(pdf_dir, exist_ok=True)
     path = os.path.join(pdf_dir, f'requisicion_{requisicion.id}.pdf')
     try:
+        pdf_bytes = generar_pdf_requisicion(requisicion)
         with open(path, 'wb') as f:
             f.write(pdf_bytes)
     except Exception as e:
-        app.logger.error(f'Error guardando PDF {path}: {e}')
+        app.logger.error(f'Error guardando PDF {path}: {e}', exc_info=True)
+        return None
     return path
 
 
