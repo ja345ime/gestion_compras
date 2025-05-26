@@ -28,7 +28,15 @@ FLASK_DEBUG=0
    gunicorn -w 4 -b 0.0.0.0:8000 wsgi:app
    ```
 
-   Se recomienda usar Nginx como proxy inverso.
+Se recomienda usar Nginx como proxy inverso.
+
+## 🚀 Instalación rápida
+
+Para instalar todas las dependencias y ejecutar el servidor utiliza:
+
+```bash
+./setup.sh
+```
 
 ### Configuración Nginx
 
