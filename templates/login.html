@@ -80,7 +80,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('login') }}{{ '?next=' + request.args.get('next', '') if request.args.get('next') else '' }}" novalidate>
+        <form method="POST" action="{{ url_for('login') }}{{ '?next=' ~ request.args.get('next', '') if request.args.get('next') else '' }}" novalidate>
             {{ form.hidden_tag() }}
             <div class="form-group">
                 {{ form.username.label }}
