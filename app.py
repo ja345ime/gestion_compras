@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 import pytz
 
 import logging
+from logging.handlers import RotatingFileHandler
+from threading import Thread
 from markupsafe import Markup 
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
@@ -19,12 +21,12 @@ from email.mime.text import MIMEText
 from email_utils import render_correo_html
 import base64
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env'))
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'requisiciones.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'requisiciones.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
 app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
@@ -42,7 +44,15 @@ login_manager.login_message_category = "info"
 csrf = CSRFProtect()
 csrf.init_app(app)
 
-logging.basicConfig(level=logging.DEBUG)
+# Configuración de logs rotativos
+log_dir = os.environ.get('LOG_PATH', os.path.join(BASE_DIR, 'logs'))
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'app.log')
+handler = RotatingFileHandler(log_file, maxBytes=10240, backupCount=10)
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+handler.setLevel(logging.INFO)
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
 
 TIEMPO_LIMITE_EDICION_REQUISICION = timedelta(minutes=30)
 
@@ -415,7 +425,6 @@ def generar_mensaje_correo(
             logo_base64 = base64.b64encode(f.read()).decode('utf-8')
             logo_html = f'<img src="data:image/jpeg;base64,{logo_base64}" style="max-height:60px;">'
     except Exception as e:
-        print(e)
         app.logger.error(f"Error cargando logo: {e}")
         logo_html = 'Logo Granja Los Molinos'
 
@@ -470,7 +479,7 @@ def generar_mensaje_correo(
 
 
 def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
-    """Envía un correo usando los datos configurados en las variables de entorno."""
+    """Envía un correo en un hilo separado para no bloquear la aplicación."""
     smtp_server = app.config.get('SMTP_SERVER')
     if not smtp_server or not destinatarios:
         app.logger.warning('SMTP no configurado o sin destinatarios, correo no enviado')
@@ -481,25 +490,28 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
     smtp_password = app.config.get('SMTP_PASSWORD')
     remitente = app.config.get('MAIL_FROM') or smtp_user
 
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            if smtp_user and smtp_password:
-                server.login(smtp_user, smtp_password)
+    def _send():
+        try:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
 
-            msg = MIMEText(mensaje, 'html', 'utf-8')
-            msg['Subject'] = asunto
-            msg['From'] = remitente
-            msg['To'] = ', '.join(destinatarios)
+                msg = MIMEText(mensaje, 'html', 'utf-8')
+                msg['Subject'] = asunto
+                msg['From'] = remitente
+                msg['To'] = ', '.join(destinatarios)
 
-            server.send_message(msg)
-            app.logger.info(
-                f"Correo enviado a {destinatarios} con asunto '{asunto}'"
-            )
-    except Exception as e:
-        app.logger.error(f"Error enviando correo: {e}")
+                server.send_message(msg)
+                app.logger.info(
+                    f"Correo enviado a {destinatarios} con asunto '{asunto}'"
+                )
+        except Exception as e:
+            app.logger.error(f"Error enviando correo: {e}")
+
+    Thread(target=_send, daemon=True).start()
 
 
 def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
@@ -808,8 +820,9 @@ def crear_requisicion():
                 )
                 enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
 
+            guardar_pdf_requisicion(nueva_requisicion)
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
-            return redirect(url_for('listar_requisiciones'))
+            return redirect(url_for('requisicion_creada', requisicion_id=nueva_requisicion.id))
         except Exception as e:
             db.session.rollback()
             flash(f'Error al crear la requisición: {str(e)}', 'danger')
@@ -819,6 +832,13 @@ def crear_requisicion():
     return render_template('crear_requisicion.html', form=form, title="Crear Nueva Requisición",
                            unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
                            productos_sugerencias=productos_sugerencias)
+
+
+@app.route('/requisicion/<int:requisicion_id>/creada')
+@login_required
+def requisicion_creada(requisicion_id):
+    requisicion = Requisicion.query.get_or_404(requisicion_id)
+    return render_template('requisicion_creada.html', requisicion=requisicion, title='Requisición Creada')
 
 # Ruta para Requisiciones ACTIVAS
 @app.route('/requisiciones')
@@ -1466,6 +1486,20 @@ def generar_pdf_requisicion(requisicion):
     ]
 
     return _crear_pdf_minimo(cabecera, detalles)
+
+
+def guardar_pdf_requisicion(requisicion):
+    """Genera y guarda el PDF de la requisición en static/pdf/."""
+    pdf_bytes = generar_pdf_requisicion(requisicion)
+    pdf_dir = os.path.join(app.root_path, 'static', 'pdf')
+    os.makedirs(pdf_dir, exist_ok=True)
+    path = os.path.join(pdf_dir, f'requisicion_{requisicion.id}.pdf')
+    try:
+        with open(path, 'wb') as f:
+            f.write(pdf_bytes)
+    except Exception as e:
+        app.logger.error(f'Error guardando PDF {path}: {e}')
+    return path
 
 
 @app.route('/requisicion/<int:requisicion_id>/imprimir')

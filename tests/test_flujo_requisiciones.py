@@ -205,4 +205,4 @@ def test_visibilidad_requisiciones_por_rol(app, client):
 
 if __name__ == '__main__':
     import pytest
-    raise SystemExit(pytest.main(['--html=report.html']))
+    raise SystemExit(pytest.main())
