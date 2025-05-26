@@ -2,7 +2,7 @@
 set -e
 
 echo "📦 Haciendo pull de Git..."
-git pull origin main
+git pull origin master
 
 echo "📦 Instalando dependencias..."
 pip install -r requirements.txt
