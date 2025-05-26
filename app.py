@@ -6,10 +6,9 @@ from wtforms import StringField, SelectField, TextAreaField, SubmitField, Decima
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+import pytz
 
-# Compatibilidad para versiones anteriores a Python 3.11
-UTC = timezone.utc
 import logging
 from markupsafe import Markup 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -129,8 +128,8 @@ class Requisicion(db.Model):
     __tablename__ = 'requisicion'
     id = db.Column(db.Integer, primary_key=True)
     numero_requisicion = db.Column(db.String(255), unique=True, nullable=False)
-    fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    fecha_modificacion = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC), nullable=False)
+    fecha_modificacion = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC), onupdate=lambda: datetime.now(pytz.UTC))
     nombre_solicitante = db.Column(db.String(255), nullable=False)
     cedula_solicitante = db.Column(db.String(20), nullable=False)
     correo_solicitante = db.Column(db.String(255), nullable=False)
@@ -873,7 +872,7 @@ def listar_requisiciones():
         title="Requisiciones Pendientes",
         vista_actual='activas',
         datetime=datetime,
-        UTC=UTC,
+        UTC=pytz.UTC,
         TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION
     )
 
@@ -942,7 +941,7 @@ def historial_requisiciones():
                            title="Historial de Requisiciones",
                            vista_actual='historial',
                            datetime=datetime,
-                           UTC=UTC,
+                           UTC=pytz.UTC,
                            TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION)
 
 
@@ -1066,7 +1065,7 @@ def ver_requisicion(requisicion_id):
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
 
     # Usamos un datetime con zona horaria UTC para evitar errores de comparación
-    ahora = datetime.now(UTC).replace(tzinfo=None)
+    ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
     editable_dentro_limite_original = False
     if requisicion.fecha_creacion:
         fecha_creacion = requisicion.fecha_creacion.replace(tzinfo=None)
@@ -1117,7 +1116,7 @@ def editar_requisicion(requisicion_id):
     requisicion_a_editar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_editar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.now(UTC).replace(tzinfo=None)
+    ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
     dentro_del_limite = False
     if requisicion_a_editar.fecha_creacion:
         fecha_creacion = requisicion_a_editar.fecha_creacion.replace(tzinfo=None)
@@ -1187,7 +1186,7 @@ def confirmar_eliminar_requisicion(requisicion_id):
     requisicion = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.now(UTC).replace(tzinfo=None)
+    ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
     dentro_del_limite = False
     if requisicion.fecha_creacion:
         fecha_creacion = requisicion.fecha_creacion.replace(tzinfo=None)
@@ -1209,7 +1208,7 @@ def eliminar_requisicion_post(requisicion_id):
     requisicion_a_eliminar = Requisicion.query.get_or_404(requisicion_id)
     es_creador = requisicion_a_eliminar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-    ahora = datetime.now(UTC).replace(tzinfo=None)
+    ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
     dentro_del_limite = False
     if requisicion_a_eliminar.fecha_creacion:
         fecha_creacion = requisicion_a_eliminar.fecha_creacion.replace(tzinfo=None)
