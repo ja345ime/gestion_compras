@@ -30,7 +30,7 @@ FLASK_DEBUG=0
 
 Se recomienda usar Nginx como proxy inverso.
 
-## 🚀 Instalación rápida
+### Instalación rápida
 
 Para instalar todas las dependencias y ejecutar el servidor utiliza:
 
