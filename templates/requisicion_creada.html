@@ -6,7 +6,7 @@
 <h1 class="page-title">{{ title }}</h1>
 <p>La requisición fue creada correctamente.</p>
 <p>
-    <a href="{{ url_for('static', filename='pdf/requisicion_' + str(requisicion.id) + '.pdf') }}" target="_blank">
+    <a href="{{ url_for('static', filename='pdf/requisicion_' ~ requisicion.id ~ '.pdf') }}" target="_blank">
         📄 Ver PDF generado
     </a>
 </p>
