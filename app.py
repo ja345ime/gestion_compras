@@ -434,9 +434,6 @@ def generar_mensaje_correo(
     color_boton = "#F99C1B"
     color_fondo_pie = "#f0f0f0"
 
-    enlace_requisicion = f"https://sistema.granjalosmolinos.com/ver_requisicion/{requisicion.id}"
-    pdf_link = f"https://sistema.granjalosmolinos.com/static/pdf/requisicion_{requisicion.id}.pdf"
-
     html = f"""
     <!DOCTYPE html>
     <html lang=\"es\">
@@ -463,12 +460,9 @@ def generar_mensaje_correo(
                         </span>
                     </p>
                     <p style=\"text-align:center; margin:30px 0;\">
-                        <a href=\"{enlace_requisicion}\" style=\"background-color:{color_boton}; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:4px;\">
-                            Ver Requisición
+                        <a href=\"https://sistema.granjalosmolinos.com\" style=\"background-color:{color_boton}; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:4px;\">
+                            Ingresar al sistema
                         </a>
-                    </p>
-                    <p style=\"text-align:center; margin:20px 0;\">
-                        <a href=\"{pdf_link}\" style=\"color:{color_encabezado}; text-decoration:none;\">Descargar PDF</a>
                     </p>
                 </td>
             </tr>
