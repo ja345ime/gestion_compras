@@ -1525,6 +1525,9 @@ def imprimir_requisicion(requisicion_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        crear_datos_iniciales()
+        try:
+            crear_datos_iniciales()
+        except Exception as e:
+            app.logger.warning(f"No se pudieron crear datos iniciales: {e}")
     # Ejecutar con `flask run` o gunicorn
     # app.run(debug=os.environ.get('FLASK_DEBUG') == '1')
