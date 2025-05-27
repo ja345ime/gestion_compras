@@ -62,8 +62,8 @@ server {
 }
 ```
 
-Con esta configuración el sistema será accesible desde otros dispositivos de la
-red local mediante `http://192.168.x.x/` o un dominio interno.
+Con esta configuración el sistema será accesible a través de Nginx
+utilizando un dominio o una IP interna como `http://192.168.x.x/`.
 
 ### Reiniciar base de datos en pruebas
 
