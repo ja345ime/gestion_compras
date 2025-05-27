@@ -26,6 +26,8 @@ def render_correo_html(titulo: str, cuerpo: str, estado: str, logo_url: str) -> 
     color_boton = "#F99C1B"
     color_fondo_pie = "#f0f0f0"
 
+    enlace = "https://sistema.granjalosmolinos.com"
+
     html = f"""
     <!DOCTYPE html>
     <html lang=\"es\">
@@ -52,7 +54,7 @@ def render_correo_html(titulo: str, cuerpo: str, estado: str, logo_url: str) -> 
                         </span>
                     </p>
                     <p style="text-align:center; margin:30px 0;">
-                        <a href="#" style="background-color:{color_boton}; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:4px;">
+                        <a href="{enlace}" style="background-color:{color_boton}; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:4px;">
                             Ingresar al sistema
                         </a>
                     </p>
