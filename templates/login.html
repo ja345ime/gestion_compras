@@ -10,9 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body {
+        body.bg-login {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0d47a1, #f99c1b);
+            background: linear-gradient(135deg, #1D1455, #F99C1B);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,7 +28,7 @@
             max-width: 420px;
             animation: fadeIn 0.8s ease;
         }
-        .login-container .logo {
+        .logo-header {
             max-width: 160px;
             display: block;
             margin: 0 auto 15px auto;
@@ -46,19 +46,20 @@
             color: #6c757d;
             margin-bottom: 25px;
         }
-        .btn-login {
+        .btn-granja {
             background-color: #F99C1B;
             border-color: #F99C1B;
+            color: #fff;
             width: 100%;
             padding: 12px;
             font-size: 1.1rem;
             font-weight: 600;
             letter-spacing: 0.5px;
-            color: #fff;
+            border-radius: 8px;
         }
-        .btn-login:hover {
+        .btn-granja:hover {
             background-color: #e08e0b;
-            border-color: #e08e0b;
+            border-color: #d1800a;
             color: #fff;
         }
         .alert {
@@ -83,9 +84,9 @@
         }
     </style>
 </head>
-<body>
+<body class="bg-login">
     <div class="login-container">
-        <img src="{{ url_for('static', filename='images/logo_granja.jpg') }}" alt="Logo" class="logo">
+        <img src="{{ url_for('static', filename='images/logo_granja.jpg') }}" alt="Logo" class="logo-header">
         <h1>Bienvenido a Granja Los Molinos</h1>
         <p class="subtitle">Sistema de Compras Interno</p>
 
@@ -128,11 +129,11 @@
                 {% endfor %}
             </div>
             <div class="form-group mt-4 mb-3">
-                {{ form.submit(class="btn btn-login btn-block") }}
+                {{ form.submit(class="btn btn-granja btn-block") }}
             </div>
         </form>
     </div>
-    <div class="banner">Solo personal autorizado. © Granja Los Molinos</div>
+    <div class="banner">Sistema de Compras Interno – Granja Los Molinos ©</div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>

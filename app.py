@@ -798,7 +798,7 @@ def eliminar_usuario_post(usuario_id):
 @app.route('/')
 @login_required
 def index():
-    return render_template('inicio.html', title="Inicio")
+    return render_template('inicio.html', title="Inicio", usuario=current_user)
 
 
 @app.route('/requisiciones/crear', methods=['GET', 'POST'])
