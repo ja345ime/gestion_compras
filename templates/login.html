@@ -12,7 +12,8 @@
     <style>
         body.bg-login {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #1D1455, #F99C1B);
+            background: url("{{ url_for('static', filename='images/fondo_galpones.jpg') }}") no-repeat center center fixed;
+            background-size: cover;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -56,11 +57,13 @@
             font-weight: 600;
             letter-spacing: 0.5px;
             border-radius: 8px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
         .btn-granja:hover {
             background-color: #e08e0b;
             border-color: #d1800a;
             color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         .alert {
             margin-bottom: 20px;

@@ -136,6 +136,7 @@
         }
         .btn {
             border-radius: 8px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
         .btn-granja {
             background-color: var(--color-acento-granja);
@@ -146,6 +147,13 @@
             background-color: #e08e0b;
             border-color: #d1800a;
             color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .container.main-content, .card {
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+        .container.main-content:hover, .card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
         .bg-login {
             background: linear-gradient(135deg, var(--color-primario-granja), var(--color-acento-granja));
