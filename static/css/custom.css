@@ -1,0 +1,60 @@
+/* Fuente global */
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Colores base */
+:root {
+  --color-azul: #1D1455;
+  --color-naranja: #F99C1B;
+}
+
+/* Botón personalizado */
+.btn-granja {
+  background-color: var(--color-naranja);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-granja:hover {
+  background-color: #e08e0b;
+  transform: scale(1.03);
+}
+
+/* Login */
+.bg-login {
+  background: linear-gradient(to bottom right, var(--color-azul), var(--color-naranja));
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card efecto */
+.card-hover {
+  transition: box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Fade in */
+.fade-in {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo mini */
+.logo-mini {
+  height: 40px;
+  margin-right: 12px;
+  vertical-align: middle;
+}

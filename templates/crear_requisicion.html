@@ -153,7 +153,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('crear_requisicion') }}" novalidate>
+        <form method="POST" action="{{ url_for('crear_requisicion') }}" class="fade-in" novalidate>
             {{ form.hidden_tag() }} 
 
             <fieldset>
