@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     <style>
         body.bg-login {
             font-family: 'Poppins', sans-serif;
@@ -27,7 +28,6 @@
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
             width: 100%;
             max-width: 420px;
-            animation: fadeIn 0.8s ease;
         }
         .logo-header {
             max-width: 160px;
@@ -88,8 +88,8 @@
     </style>
 </head>
 <body class="bg-login">
-    <div class="login-container">
-        <img src="{{ url_for('static', filename='images/logo_granja.jpg') }}" alt="Logo" class="logo-header">
+    <div class="login-container fade-in">
+        <img src="{{ url_for('static', filename='images/logo_granja_mini.jpg') }}" alt="Logo" class="logo-header logo-mini">
         <h1>Bienvenido a Granja Los Molinos</h1>
         <p class="subtitle">Sistema de Compras Interno</p>
 
@@ -107,7 +107,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('login') }}{{ '?next=' ~ request.args.get('next', '') if request.args.get('next') else '' }}" novalidate>
+        <form method="POST" action="{{ url_for('login') }}{{ '?next=' ~ request.args.get('next', '') if request.args.get('next') else '' }}" class="fade-in" novalidate>
             {{ form.hidden_tag() }}
             <div class="form-group">
                 <div class="input-group input-group-lg">

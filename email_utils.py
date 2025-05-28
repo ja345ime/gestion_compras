@@ -33,12 +33,13 @@ def render_correo_html(titulo: str, cuerpo: str, estado: str, logo_url: str) -> 
         <meta charset=\"UTF-8\">
         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
         <title>{titulo}</title>
+        <link href='https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap' rel='stylesheet'>
     </head>
-    <body style=\"font-family: Arial, Helvetica, sans-serif; margin:0; padding:0;\">
+    <body style=\"font-family:'Poppins', Arial, Helvetica, sans-serif; margin:0; padding:0;\">
         <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">
             <tr>
                 <td style=\"background-color:{color_encabezado}; padding:20px; text-align:center;\">
-                    <img src=\"{logo_url}\" alt=\"Logo\" style=\"max-height:60px;\">
+                    <img src=\"{logo_url}\" alt=\"Logo\" style=\"width:60px;\">
                 </td>
             </tr>
             <tr>
