@@ -5,7 +5,7 @@
 <div class="container mt-4">
     <h1 class="mb-4 page-title">Editar Usuario</h1>
 
-    <form method="POST" action="{{ url_for('editar_usuario', usuario_id=usuario_id) }}" novalidate>
+    <form method="POST" action="{{ url_for('editar_usuario', usuario_id=usuario_id) }}" class="fade-in" novalidate>
         {{ form.hidden_tag() }}
 
         <fieldset class="mb-3">
