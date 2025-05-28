@@ -6,6 +6,9 @@
     <title>{% block title %}Sistema de Requisiciones{% endblock %} - Granja Los Molinos</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --color-primario-granja: #1D1455; 
@@ -14,7 +17,7 @@
             --color-texto-navbar-hover-granja: #FAD02E; 
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Poppins', sans-serif;
             background-color: #f4f7f9;
             color: #333;
             padding-top: 80px;
@@ -130,6 +133,25 @@
         .btn-secondary:hover {
             background-color: #5a6268;
             border-color: #545b62;
+        }
+        .btn {
+            border-radius: 8px;
+        }
+        .btn-granja {
+            background-color: var(--color-acento-granja);
+            border-color: var(--color-acento-granja);
+            color: #fff;
+        }
+        .btn-granja:hover {
+            background-color: #e08e0b;
+            border-color: #d1800a;
+            color: #fff;
+        }
+        .bg-login {
+            background: linear-gradient(135deg, var(--color-primario-granja), var(--color-acento-granja));
+        }
+        .logo-header {
+            text-align: center;
         }
         .bg-danger-light { background-color: #ffe5e5; }
         .bg-warning-light { background-color: #fff6d1; }

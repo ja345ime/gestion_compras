@@ -23,10 +23,10 @@
         <td>{{ req.detalles[0].cantidad if req.detalles else '' }}</td>
         <td>
           <a href="{{ url_for('ver_requisicion', requisicion_id=req.id) }}"
-             class="btn btn-info btn-sm">Ver</a>
+             class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
           {% if current_user.rol_asignado.nombre == 'Compras' and estado == 'Pendiente de Cotizar' %}
             <a href="{{ url_for('editar_requisicion', requisicion_id=req.id) }}"
-               class="btn btn-primary btn-sm">Editar</a>
+               class="btn btn-primary btn-sm"><i class="fas fa-edit"></i></a>
           {% endif %}
         </td>
       </tr>
