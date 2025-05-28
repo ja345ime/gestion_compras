@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Error Interno{% endblock %}
+{% block content %}
+<h1 class="text-danger">Ocurrió un error</h1>
+<p>Lo sentimos, se produjo un error interno en el servidor.</p>
+<a href="{{ url_for('index') }}" class="btn btn-azul">Volver al inicio</a>
+{% endblock %}

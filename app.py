@@ -1111,6 +1111,8 @@ def ver_requisicion(requisicion_id):
         opciones_estado_permitidas = [(requisicion.estado, ESTADOS_REQUISICION_DICT.get(requisicion.estado, requisicion.estado))]
 
     form_estado.estado.choices = opciones_estado_permitidas
+    if not form_estado.estado.choices:
+        form_estado.estado.choices = [('N/A', 'No disponible')]
 
     if request.method == 'POST' and form_estado.submit_estado.data and form_estado.validate_on_submit() :
         if not (current_user.rol_asignado and current_user.rol_asignado.nombre in ['Admin', 'Compras', 'Almacen']):
@@ -1168,12 +1170,14 @@ def ver_requisicion(requisicion_id):
 
     creador_usuario = getattr(requisicion, 'creador', None)
     departamento_asignado = getattr(requisicion, 'departamento_obj', None)
+    comentario_estado_texto = getattr(requisicion, 'comentario_estado', None)
 
     return render_template(
         'ver_requisicion.html',
         requisicion=requisicion,
         creador=creador_usuario,
         departamento=departamento_asignado,
+        comentario_estado=comentario_estado_texto,
         title=f"Detalle Requisición {requisicion.numero_requisicion}",
         puede_editar=puede_editar,
         puede_eliminar=puede_eliminar,
@@ -1216,12 +1220,16 @@ def editar_requisicion(requisicion_id):
 
     form = RequisicionForm(obj=requisicion_a_editar if request.method == 'GET' else None)
     if request.method == 'GET':
-        if requisicion_a_editar.departamento_obj:
+        if getattr(requisicion_a_editar, 'departamento_obj', None):
             form.departamento_nombre.data = requisicion_a_editar.departamento_obj.nombre
         while len(form.detalles.entries) > 0:
             form.detalles.pop_entry()
-        for detalle_db in requisicion_a_editar.detalles:
-            form.detalles.append_entry(detalle_db)
+        detalles_iterables = getattr(requisicion_a_editar, 'detalles', [])
+        if detalles_iterables:
+            for detalle_db in detalles_iterables:
+                form.detalles.append_entry(detalle_db)
+        else:
+            form.detalles.append_entry()
 
     if form.validate_on_submit():
         try:
@@ -1243,13 +1251,16 @@ def editar_requisicion(requisicion_id):
             db.session.flush()
 
             for detalle_form_data in form.detalles.data:
-                if detalle_form_data['producto'] and detalle_form_data['cantidad'] is not None and detalle_form_data['unidad_medida']:
-                    nombre_producto_estandarizado = detalle_form_data['producto'].strip().title()
+                producto = detalle_form_data.get('producto')
+                cantidad = detalle_form_data.get('cantidad')
+                unidad_medida = detalle_form_data.get('unidad_medida')
+                if producto and cantidad is not None and unidad_medida:
+                    nombre_producto_estandarizado = producto.strip().title()
                     nuevo_detalle = DetalleRequisicion(
                         requisicion_id=requisicion_a_editar.id,
                         producto=nombre_producto_estandarizado,
-                        cantidad=detalle_form_data['cantidad'],
-                        unidad_medida=detalle_form_data['unidad_medida']
+                        cantidad=cantidad,
+                        unidad_medida=unidad_medida
                     )
                     db.session.add(nuevo_detalle)
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
@@ -1585,6 +1596,13 @@ def imprimir_requisicion(requisicion_id):
     resp.headers['Content-Type'] = 'application/pdf'
     resp.headers['Content-Disposition'] = f'attachment; filename={nombre}'
     return resp
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    """Maneja errores 500 mostrando una página amigable y registrando el error."""
+    app.logger.error(f"Error 500: {error}", exc_info=True)
+    return render_template('500.html', title='Error Interno'), 500
 
 
 
