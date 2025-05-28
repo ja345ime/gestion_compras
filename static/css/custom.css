@@ -19,7 +19,7 @@ body {
   border-radius: 8px;
   padding: 10px 16px;
   font-weight: 600;
-  margin-right: 8px;
+  margin-right: 12px;
   transition: background-color 0.3s ease;
 }
 .btn-granja:hover {
@@ -33,7 +33,7 @@ body {
   border-radius: 8px;
   padding: 10px 16px;
   font-weight: 600;
-  margin-right: 8px;
+  margin-right: 12px;
   transition: background-color 0.3s ease;
 }
 .btn-azul:hover {
@@ -42,8 +42,7 @@ body {
 
 /* Login */
 .bg-login {
-  background: linear-gradient(rgba(29, 20, 85, 0.6), rgba(249, 156, 27, 0.6)), url('../images/fondo_galpones.jpg') no-repeat center center fixed;
-  background-size: cover;
+  background: linear-gradient(135deg, #1D1455, #F99C1B);
   min-height: 100vh;
   display: flex;
   align-items: center;
