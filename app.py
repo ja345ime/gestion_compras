@@ -1011,7 +1011,19 @@ def historial_requisiciones():
 @app.route('/requisicion/<int:requisicion_id>', methods=['GET', 'POST'])
 @login_required
 def ver_requisicion(requisicion_id):
-    requisicion = Requisicion.query.get_or_404(requisicion_id)
+    try:
+        requisicion = Requisicion.query.get(requisicion_id)
+    except Exception as e:
+        app.logger.error(f"Error obteniendo requisicion {requisicion_id}: {e}", exc_info=True)
+        flash('Error al cargar la requisición.', 'danger')
+        return redirect(url_for('listar_requisiciones'))
+
+    if requisicion is None:
+        flash('Requisición no encontrada.', 'danger')
+        return redirect(url_for('listar_requisiciones'))
+
+    if not all([requisicion.numero_requisicion, requisicion.estado, requisicion.prioridad]):
+        flash('La requisición tiene datos incompletos.', 'warning')
     
     if request.method == 'GET':
         form_estado = CambiarEstadoForm(obj=requisicion)
@@ -1176,7 +1188,19 @@ def ver_requisicion(requisicion_id):
 @app.route('/requisicion/<int:requisicion_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_requisicion(requisicion_id):
-    requisicion_a_editar = Requisicion.query.get_or_404(requisicion_id)
+    try:
+        requisicion_a_editar = Requisicion.query.get(requisicion_id)
+    except Exception as e:
+        app.logger.error(f"Error obteniendo requisicion {requisicion_id} para editar: {e}", exc_info=True)
+        flash('Error al cargar la requisición.', 'danger')
+        return redirect(url_for('listar_requisiciones'))
+
+    if requisicion_a_editar is None:
+        flash('Requisición no encontrada.', 'danger')
+        return redirect(url_for('listar_requisiciones'))
+
+    if not all([requisicion_a_editar.numero_requisicion, requisicion_a_editar.estado, requisicion_a_editar.prioridad]):
+        flash('La requisición tiene datos incompletos.', 'warning')
     es_creador = requisicion_a_editar.creador_id == current_user.id
     es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
     ahora = datetime.now(pytz.UTC).replace(tzinfo=None)

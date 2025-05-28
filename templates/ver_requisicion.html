@@ -46,13 +46,13 @@
     <div class="card-body">
         <dl class="row requisicion-info">
             <dt class="col-sm-3">Número:</dt>
-            <dd class="col-sm-9">{{ requisicion.numero_requisicion }}</dd>
+            <dd class="col-sm-9">{{ requisicion.numero_requisicion or 'N/D' }}</dd>
             
             <dt class="col-sm-3">Fecha Creación:</dt>
-            <dd class="col-sm-9">{{ requisicion.fecha_creacion.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+            <dd class="col-sm-9">{{ requisicion.fecha_creacion.strftime('%d/%m/%Y %H:%M:%S') if requisicion.fecha_creacion else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Última Modif.:</dt>
-            <dd class="col-sm-9">{{ requisicion.fecha_modificacion.strftime('%d/%m/%Y %H:%M:%S') if requisicion.fecha_modificacion and requisicion.fecha_modificacion != requisicion.fecha_creacion else '-'}}</dd>
+            <dd class="col-sm-9">{{ requisicion.fecha_modificacion.strftime('%d/%m/%Y %H:%M:%S') if requisicion.fecha_modificacion and requisicion.fecha_modificacion != requisicion.fecha_creacion else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Creador:</dt>
             <dd class="col-sm-9">
@@ -64,19 +64,19 @@
             </dd>
             
             <dt class="col-sm-3">Solicitante (Form):</dt>
-            <dd class="col-sm-9">{{ requisicion.nombre_solicitante }}</dd>
+            <dd class="col-sm-9">{{ requisicion.nombre_solicitante or 'N/D' }}</dd>
             
             <dt class="col-sm-3">Cédula Solicitante:</dt>
-            <dd class="col-sm-9">{{ requisicion.cedula_solicitante }}</dd>
+            <dd class="col-sm-9">{{ requisicion.cedula_solicitante or 'N/D' }}</dd>
             
             <dt class="col-sm-3">Correo Electrónico:</dt>
-            <dd class="col-sm-9">{{ requisicion.correo_solicitante }}</dd>
+            <dd class="col-sm-9">{{ requisicion.correo_solicitante or 'N/D' }}</dd>
             
             <dt class="col-sm-3">Departamento:</dt>
             <dd class="col-sm-9">{{ departamento.nombre if departamento else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Prioridad:</dt>
-            <dd class="col-sm-9">{{ requisicion.prioridad }}</dd>
+            <dd class="col-sm-9">{{ requisicion.prioridad or 'N/D' }}</dd>
             
             {% if requisicion.observaciones %}
             <dt class="col-sm-3">Observaciones:</dt>
