@@ -91,27 +91,6 @@
             border-bottom: 2px solid var(--color-primario-granja);
             padding-bottom: 10px;
         }
-        .btn-granja {
-            background-color: var(--color-acento-granja);
-            border-color: var(--color-acento-granja);
-            color: #fff;
-        }
-        .btn-granja:hover {
-            background-color: #e08e0b;
-            border-color: #d1800a;
-            color: #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-        .btn-secundario {
-            background-color: #6c757d;
-            border-color: #6c757d;
-            color: #fff;
-        }
-        .btn-secundario:hover {
-            background-color: #5a6268;
-            border-color: #545b62;
-            color: #fff;
-        }
         .btn-danger {
             background-color: #dc3545;
             border-color: #dc3545;
@@ -156,7 +135,7 @@
     </style>
     {% block head_styles %}{% endblock %}
 </head>
-<body>
+<body class="fade-in">
     <nav class="navbar navbar-expand-lg navbar-granja fixed-top">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
