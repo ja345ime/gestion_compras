@@ -6,15 +6,15 @@
 <h1 class="page-title">{{ title }}</h1>
 
 <div class="btn-actions mb-4">
-    <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-secondary">
+    <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-secundario">
         <i class="fas fa-arrow-left"></i> Ver Requisiciones Activas
     </a>
     {% if puede_editar %}
-        <a href="{{ url_for('editar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-primary">
+        <a href="{{ url_for('editar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-granja">
             <i class="fas fa-edit"></i> Editar Requisición
         </a>
     {% elif not editable_dentro_limite_original and not (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
-         <button type="button" class="btn btn-primary" disabled title="El tiempo para editar esta requisición ha expirado o no tiene permiso.">
+         <button type="button" class="btn btn-secundario" disabled title="El tiempo para editar esta requisición ha expirado o no tiene permiso.">
             <i class="fas fa-edit"></i> Editar Requisición
         </button>
     {% endif %}
@@ -25,7 +25,7 @@
     </a>
     {% endif %}
     {% if current_user.rol_asignado and current_user.rol_asignado.nombre in ['Compras', 'Admin'] %}
-    <a href="{{ url_for('imprimir_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-info">
+    <a href="{{ url_for('imprimir_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-secundario">
         <i class="fas fa-print"></i> Imprimir PDF
     </a>
     {% endif %}
@@ -114,7 +114,7 @@
                     {% endif %}
                 </div>
                 <div class="form-group col-md-2 align-self-center">
-                    {{ form_estado.submit_estado(class="btn btn-success btn-sm btn-block") }}
+                    {{ form_estado.submit_estado(class="btn btn-granja btn-sm btn-block") }}
                 </div>
             </div>
         </form>
