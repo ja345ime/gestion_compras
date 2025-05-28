@@ -1,5 +1,9 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, make_response, session
+
+from sqlalchemy import inspect
+
+
 from dotenv import load_dotenv
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, FieldList, FormField, PasswordField, BooleanField
@@ -42,6 +46,25 @@ app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
 app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
 app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM')
 db = SQLAlchemy(app)
+
+
+def ensure_session_token_column():
+    """Adds session_token column if missing."""
+    inspector = inspect(db.engine)
+    if 'usuario' in inspector.get_table_names():
+        cols = [c['name'] for c in inspector.get_columns('usuario')]
+        if 'session_token' not in cols:
+            db.session.execute(
+                'ALTER TABLE usuario ADD COLUMN session_token VARCHAR(100)'
+            )
+            db.session.commit()
+
+
+with app.app_context():
+    try:
+        ensure_session_token_column()
+    except Exception as exc:
+        app.logger.warning(f'No se pudo actualizar la base de datos: {exc}')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
