@@ -266,6 +266,11 @@ class ConfirmarEliminarForm(FlaskForm):
     """Formulario simple para confirmar la eliminación de una requisición."""
     submit = SubmitField('Sí, Eliminar Requisición')
 
+
+class ConfirmarEliminarUsuarioForm(FlaskForm):
+    """Formulario simple para confirmar la eliminación de un usuario."""
+    submit = SubmitField('Sí, Eliminar Usuario')
+
 # --- Decorador de Permisos ---
 def admin_required(f):
     @wraps(f)
@@ -750,6 +755,44 @@ def editar_usuario(usuario_id):
                 app.logger.error(f"Error inesperado al editar usuario {usuario_id}: {e}", exc_info=True)
 
     return render_template('admin/editar_usuario.html', form=form, usuario_id=usuario.id, title="Editar Usuario")
+
+
+@app.route('/admin/usuarios/<int:usuario_id>/confirmar_eliminar')
+@login_required
+@admin_required
+def confirmar_eliminar_usuario(usuario_id):
+    usuario = Usuario.query.get_or_404(usuario_id)
+    if usuario.id == current_user.id:
+        flash('No puede eliminar su propio usuario.', 'danger')
+        return redirect(url_for('editar_usuario', usuario_id=usuario_id))
+    form = ConfirmarEliminarUsuarioForm()
+    return render_template('admin/confirmar_eliminar_usuario.html',
+                           usuario=usuario,
+                           form=form,
+                           title=f"Confirmar Eliminación: {usuario.username}")
+
+
+@app.route('/admin/usuarios/<int:usuario_id>/eliminar', methods=['POST'])
+@login_required
+@admin_required
+def eliminar_usuario_post(usuario_id):
+    form = ConfirmarEliminarUsuarioForm()
+    usuario = Usuario.query.get_or_404(usuario_id)
+    if usuario.id == current_user.id:
+        flash('No puede eliminar su propio usuario.', 'danger')
+        return redirect(url_for('editar_usuario', usuario_id=usuario_id))
+    if not form.validate_on_submit():
+        flash('Petición inválida.', 'danger')
+        return redirect(url_for('confirmar_eliminar_usuario', usuario_id=usuario_id))
+    try:
+        db.session.delete(usuario)
+        db.session.commit()
+        flash(f'Usuario {usuario.username} eliminado con éxito.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
+        app.logger.error(f"Error al eliminar usuario {usuario_id}: {e}", exc_info=True)
+    return redirect(url_for('listar_usuarios'))
 
 # --- Rutas de Requisiciones ---
 @app.route('/')

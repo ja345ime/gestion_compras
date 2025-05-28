@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block head_styles %}
+<style>
+.usuario-details {
+    text-align: left;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    border: 1px solid #eee;
+}
+.usuario-details strong {
+    color: #0056b3;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title text-danger">{{ title }}</h1>
+<p class="lead">¿Está seguro de que desea eliminar permanentemente este usuario?<br><strong>Esta acción no se puede deshacer.</strong></p>
+
+<div class="usuario-details">
+    <p><strong>Username:</strong> {{ usuario.username }}</p>
+    <p><strong>Cédula:</strong> {{ usuario.cedula }}</p>
+    <p><strong>Nombre Completo:</strong> {{ usuario.nombre_completo }}</p>
+    <p><strong>Email:</strong> {{ usuario.email or 'N/A' }}</p>
+</div>
+
+<div class="text-center mt-4">
+    <form method="POST" action="{{ url_for('eliminar_usuario_post', usuario_id=usuario.id) }}" class="d-inline-block">
+        {{ form.hidden_tag() }}
+        {{ form.submit(class="btn btn-danger") }}
+    </form>
+    <a href="{{ url_for('editar_usuario', usuario_id=usuario.id) }}" class="btn btn-secondary ml-2">Cancelar</a>
+</div>
+{% endblock %}
