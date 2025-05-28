@@ -104,8 +104,8 @@
         </fieldset>
 
         <div class="form-group mt-4">
-            {{ form.submit(class="btn btn-primary btn-lg") }}
-            <a href="{{ url_for('listar_usuarios') }}" class="btn btn-secondary btn-lg ml-2">Cancelar</a>
+            {{ form.submit(class="btn btn-granja btn-lg") }}
+            <a href="{{ url_for('listar_usuarios') }}" class="btn btn-secundario btn-lg ml-2">Cancelar</a>
             {% if usuario_id != current_user.id %}
             <a href="{{ url_for('confirmar_eliminar_usuario', usuario_id=usuario_id) }}" class="btn btn-danger btn-lg ml-2">Eliminar</a>
             {% endif %}
