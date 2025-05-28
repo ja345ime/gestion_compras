@@ -52,6 +52,16 @@ login_manager.login_message_category = "info"
 csrf = CSRFProtect()
 csrf.init_app(app)
 
+# Filtro para convertir saltos de línea en etiquetas <br>
+@app.template_filter('nl2br')
+def nl2br(value):
+    """Convierte los saltos de línea en etiquetas ``<br>`` para mostrar texto
+    multilínea en plantillas."""
+    if value is None:
+        return ''
+    escaped = Markup.escape(value)
+    return Markup('<br>'.join(escaped.splitlines()))
+
 # Configuración de logs rotativos
 log_dir = os.environ.get('LOG_PATH', os.path.join(BASE_DIR, 'logs'))
 os.makedirs(log_dir, exist_ok=True)
