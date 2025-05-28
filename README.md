@@ -38,6 +38,12 @@ Para instalar todas las dependencias y ejecutar el servidor utiliza:
 ./setup.sh
 ```
 
+### Tiempo de expiración de sesión
+
+El sistema invalida otras sesiones activas de un usuario cuando se inicia sesión
+en un nuevo dispositivo. Además, las sesiones expiran después de una hora. Este
+valor puede modificarse cambiando la constante `DURACION_SESION` en `app.py`.
+
 ### Configuración Nginx
 
 Ejemplo de bloque de servidor:
