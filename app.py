@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, abort, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, abort, make_response, session
+from sqlalchemy import inspect
 from dotenv import load_dotenv
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, FieldList, FormField, PasswordField, BooleanField
@@ -43,11 +44,39 @@ app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
 app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM')
 db = SQLAlchemy(app)
 
+
+def ensure_session_token_column():
+    """Adds session_token column if missing."""
+    inspector = inspect(db.engine)
+    if 'usuario' in inspector.get_table_names():
+        cols = [c['name'] for c in inspector.get_columns('usuario')]
+        if 'session_token' not in cols:
+            db.session.execute(
+                'ALTER TABLE usuario ADD COLUMN session_token VARCHAR(100)'
+            )
+            db.session.commit()
+
+
+with app.app_context():
+    try:
+        ensure_session_token_column()
+    except Exception as exc:
+        app.logger.warning(f'No se pudo actualizar la base de datos: {exc}')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, inicie sesión para acceder a esta página."
 login_manager.login_message_category = "info"
+
+@app.before_request
+def validar_sesion_activa():
+    if current_user.is_authenticated:
+        token_session = session.get('session_token')
+        if not token_session or token_session != current_user.session_token:
+            logout_user()
+            flash('Tu sesión ha expirado o fue iniciada en otro dispositivo.', 'warning')
+            return redirect(url_for('login'))
 
 csrf = CSRFProtect()
 csrf.init_app(app)
@@ -73,6 +102,7 @@ app.logger.addHandler(handler)
 app.logger.setLevel(logging.INFO)
 
 TIEMPO_LIMITE_EDICION_REQUISICION = timedelta(minutes=30)
+DURACION_SESION = timedelta(hours=1)
 
 UNIDADES_DE_MEDIDA_SUGERENCIAS = [
     'Kilogramo (Kg)', 'Gramo (g)', 'Miligramo (mg)', 'Tonelada (t)', 'Quintal (qq)', 'Libra (Lb)', 
@@ -138,6 +168,7 @@ class Usuario(db.Model, UserMixin):
     activo = db.Column(db.Boolean, default=True, nullable=False)
     departamento_id = db.Column(db.Integer, db.ForeignKey('departamento.id'), nullable=True)
     rol_id = db.Column(db.Integer, db.ForeignKey('rol.id'), nullable=False)
+    session_token = db.Column(db.String(100), nullable=True)
     requisiciones_creadas = db.relationship('Requisicion', backref='creador', lazy='dynamic', foreign_keys='Requisicion.creador_id')
 
     def set_password(self, password):
@@ -611,7 +642,10 @@ def login():
         user = Usuario.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             if user.activo:
-                login_user(user)
+                user.session_token = os.urandom(24).hex()
+                db.session.commit()
+                login_user(user, duration=DURACION_SESION)
+                session['session_token'] = user.session_token
                 next_page = request.args.get('next')
                 flash('Inicio de sesión exitoso.', 'success')
                 app.logger.info(f"Usuario '{user.username}' inició sesión.")
@@ -628,6 +662,9 @@ def login():
 @login_required
 def logout():
     app.logger.info(f"Usuario '{current_user.username}' cerró sesión.")
+    current_user.session_token = None
+    db.session.commit()
+    session.pop('session_token', None)
     logout_user()
     flash('Has cerrado sesión exitosamente.', 'info')
     return redirect(url_for('login'))
@@ -760,6 +797,7 @@ def editar_usuario(usuario_id):
                 usuario.activo = form.activo.data
                 if form.password.data:
                     usuario.set_password(form.password.data)
+                    usuario.session_token = None
                 db.session.commit()
                 flash(f'Usuario "{usuario.username}" actualizado exitosamente.', 'success')
                 return redirect(url_for('listar_usuarios'))
