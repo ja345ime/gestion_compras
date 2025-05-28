@@ -12,13 +12,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     <style>
         body.bg-login {
-            font-family: 'Poppins', sans-serif;
-            background: url("{{ url_for('static', filename='images/fondo_galpones.jpg') }}") no-repeat center center fixed;
-            background-size: cover;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             padding: 20px;
         }
         .login-container {
@@ -87,7 +80,7 @@
         }
     </style>
 </head>
-<body class="bg-login">
+<body class="bg-login fade-in">
     <div class="login-container fade-in">
         <img src="{{ url_for('static', filename='images/logo_granja_mini.jpg') }}" alt="Logo" class="logo-header logo-mini">
         <h1>Bienvenido a Granja Los Molinos</h1>

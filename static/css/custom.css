@@ -1,8 +1,7 @@
 /* Fuente global */
 body {
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(rgba(244, 247, 249, 0.85), rgba(244, 247, 249, 0.85)), url('../images/fondo_galpones.jpg') no-repeat center center fixed;
-  background-size: cover;
+  background: linear-gradient(to bottom right, #1D1455, #F99C1B);
   color: #333;
 }
 
@@ -14,37 +13,37 @@ body {
 
 /* Botón personalizado */
 .btn-granja {
-  background-color: var(--color-naranja);
+  background-color: #F99C1B;
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 10px 20px;
-  font-weight: bold;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.btn-secundario {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-weight: bold;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.btn-secundario:hover {
-  background-color: #5a6268;
-  transform: scale(1.03);
+  padding: 10px 16px;
+  font-weight: 600;
+  margin-right: 8px;
+  transition: background-color 0.3s ease;
 }
 .btn-granja:hover {
   background-color: #e08e0b;
-  transform: scale(1.03);
+}
+
+.btn-azul {
+  background-color: #1D1455;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  margin-right: 8px;
+  transition: background-color 0.3s ease;
+}
+.btn-azul:hover {
+  background-color: #15103e;
 }
 
 /* Login */
 .bg-login {
-  background: linear-gradient(to bottom right, var(--color-azul), var(--color-naranja));
+  background: linear-gradient(rgba(29, 20, 85, 0.6), rgba(249, 156, 27, 0.6)), url('../images/fondo_galpones.jpg') no-repeat center center fixed;
+  background-size: cover;
   min-height: 100vh;
   display: flex;
   align-items: center;
