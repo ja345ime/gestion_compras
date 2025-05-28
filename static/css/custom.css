@@ -21,6 +21,8 @@ body {
   font-weight: 600;
   margin-right: 12px;
   transition: background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
 }
 .btn-granja:hover {
   background-color: #e08e0b;
@@ -35,6 +37,8 @@ body {
   font-weight: 600;
   margin-right: 12px;
   transition: background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
 }
 .btn-azul:hover {
   background-color: #15103e;
@@ -72,4 +76,31 @@ body {
   height: 40px;
   margin-right: 12px;
   vertical-align: middle;
+}
+
+/* Contenedores de botones en listados */
+.action-buttons,
+.filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.action-buttons {
+  margin-top: 16px;
+}
+
+.filter-buttons {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .action-buttons,
+  .filter-buttons {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

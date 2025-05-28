@@ -4,24 +4,21 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="page-title mb-0">{{ title }}</h1>
-    <div class="d-flex flex-wrap">
-        <a href="{{ url_for('listar_requisiciones') }}" class="btn {% if vista_actual == 'activas' %}btn-azul{% else %}btn-granja{% endif %}">
-            <i class="fas fa-tasks"></i> Ver Activas
-        </a>
-        <a href="{{ url_for('historial_requisiciones') }}" class="btn {% if vista_actual == 'historial' %}btn-azul{% else %}btn-granja{% endif %} ml-2">
-            <i class="fas fa-history"></i> Ver Historial
-        </a>
-
-        <a href="{{ url_for('crear_requisicion') }}" class="btn btn-granja ml-2 ml-md-3 mt-4 mt-md-0">
-            <i class="fas fa-plus-circle"></i> Crear Nueva Requisición
-        </a>
-    </div>
+<h1 class="page-title mb-0">{{ title }}</h1>
+<div class="action-buttons">
+    <a href="{{ url_for('listar_requisiciones') }}" class="btn {% if vista_actual == 'activas' %}btn-azul{% else %}btn-granja{% endif %}">
+        <i class="fas fa-tasks"></i> Ver Activas
+    </a>
+    <a href="{{ url_for('historial_requisiciones') }}" class="btn {% if vista_actual == 'historial' %}btn-azul{% else %}btn-granja{% endif %}">
+        <i class="fas fa-history"></i> Ver Historial
+    </a>
+    <a href="{{ url_for('crear_requisicion') }}" class="btn btn-granja">
+        <i class="fas fa-plus-circle"></i> Crear Nueva Requisición
+    </a>
 </div>
 
 <!-- Botones de filtro para Requisiciones Pendientes -->
-<div class="mb-3 d-flex flex-wrap" aria-label="Filtros">
+<div class="filter-buttons mb-3" aria-label="Filtros">
   <a href="{{ url_for('listar_requisiciones', filtro='todos') }}"
      class="btn btn-azul {% if filtro=='todos' %}active{% endif %}">
     Todas
@@ -62,7 +59,7 @@
 {% endwith %}
 
 {% if requisiciones %}
-    <div class="table-responsive mt-3">
+    <div class="table-responsive mt-4">
         <table class="table table-bordered table-hover">
             <thead class="thead-light">
                 <tr>
