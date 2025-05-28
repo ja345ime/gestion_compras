@@ -55,13 +55,7 @@
             <dd class="col-sm-9">{{ requisicion.fecha_modificacion.strftime('%d/%m/%Y %H:%M:%S') if requisicion.fecha_modificacion and requisicion.fecha_modificacion != requisicion.fecha_creacion else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Creador:</dt>
-            <dd class="col-sm-9">
-                {% if creador %}
-                    {{ creador.nombre_completo or creador.username }}
-                {% else %}
-                    N/D
-                {% endif %}
-            </dd>
+            <dd class="col-sm-9">{{ requisicion.creador.nombre_completo or requisicion.creador.username if requisicion.creador else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Solicitante (Form):</dt>
             <dd class="col-sm-9">{{ requisicion.nombre_solicitante or 'N/D' }}</dd>
@@ -73,7 +67,7 @@
             <dd class="col-sm-9">{{ requisicion.correo_solicitante or 'N/D' }}</dd>
             
             <dt class="col-sm-3">Departamento:</dt>
-            <dd class="col-sm-9">{{ departamento.nombre if departamento else 'N/D' }}</dd>
+            <dd class="col-sm-9">{{ requisicion.departamento_obj.nombre if requisicion.departamento_obj else 'N/D' }}</dd>
             
             <dt class="col-sm-3">Prioridad:</dt>
             <dd class="col-sm-9">{{ requisicion.prioridad or 'N/D' }}</dd>
@@ -97,11 +91,15 @@
             <div class="form-row align-items-start">
                 <div class="form-group col-md-4">
                     {{ form_estado.estado.label(class="form-label sr-only") }}
-                    {{ form_estado.estado(id="selectEstado", class="form-control form-control-sm" + (" is-invalid" if form_estado.estado.errors else "")) }}
-                    {% if form_estado.estado.errors %}
-                        <div class="invalid-feedback">
-                            {% for error in form_estado.estado.errors %}<span>{{ error }}</span><br>{% endfor %}
-                        </div>
+                    {% if form_estado.estado and form_estado.estado.choices %}
+                        {{ form_estado.estado(id="selectEstado", class="form-control form-control-sm" + (" is-invalid" if form_estado.estado.errors else "")) }}
+                        {% if form_estado.estado.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form_estado.estado.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted mb-0">No hay estados disponibles.</p>
                     {% endif %}
                 </div>
                 <div class="form-group col-md-6" id="comentarioEstadoDiv" style="display: none;">
