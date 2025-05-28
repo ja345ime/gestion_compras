@@ -11,8 +11,6 @@
     <style>
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
             padding-top: 20px;
             padding-bottom: 40px;
         }
@@ -36,13 +34,13 @@
             color: #333; 
             margin-bottom: .5rem; 
         }
-        .btn-primary {
+        .btn-granja {
             background-color: #F99C1B;
             border-color: #F99C1B;
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
             color: #fff;
         }
-        .btn-primary:hover {
+        .btn-granja:hover {
             background-color: #e08e0b;
             border-color: #d1800a;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
@@ -64,9 +62,15 @@
         .detalles-item .form-group select {
             height: calc(1.5em + .75rem + 2px); 
         }
-        .btn-secondary {
+        .btn-secundario {
             background-color: #6c757d;
             border-color: #6c757d;
+            color: #fff;
+        }
+        .btn-secundario:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+            color: #fff;
         }
         .btn-danger {
             background-color: #dc3545;
@@ -255,10 +259,10 @@
                     </div>
                 {% endfor %}
             </div>
-            <button type="button" id="add-detalle" class="btn btn-secondary mt-2 mb-3">Añadir Otro Ítem</button>
+            <button type="button" id="add-detalle" class="btn btn-secundario mt-2 mb-3">Añadir Otro Ítem</button>
             <hr>
-            <input type="submit" value="Actualizar Requisición" class="btn btn-primary btn-lg">
-            <a href="{{ url_for('ver_requisicion', requisicion_id=requisicion_id) }}" class="btn btn-outline-secondary btn-lg ml-2">Cancelar</a>
+            <input type="submit" value="Actualizar Requisición" class="btn btn-granja btn-lg">
+            <a href="{{ url_for('ver_requisicion', requisicion_id=requisicion_id) }}" class="btn btn-secundario btn-lg ml-2">Cancelar</a>
         </form>
     </div>
 

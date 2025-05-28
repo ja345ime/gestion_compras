@@ -6,17 +6,16 @@
 <div class="text-center">
     <h1 class="mb-2">Hola, {{ usuario.nombre_completo }} 👋</h1>
     <h2 class="mb-4">Bienvenido al Sistema de Compras</h2>
-    <img src="{{ url_for('static', filename='images/logo_granja.jpg') }}" alt="Galpones" class="img-fluid mb-4" style="max-height:300px;">
     <p class="lead">Selecciona una opción para continuar:</p>
 
     <div class="mt-5 d-flex justify-content-center flex-wrap">
-        <a href="{{ url_for('crear_requisicion') }}" class="btn btn-success btn-lg m-2">
+        <a href="{{ url_for('crear_requisicion') }}" class="btn btn-granja btn-lg m-2">
             <i class="fas fa-plus-circle"></i> Crear Nueva Requisición
         </a>
-        <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-primary btn-lg m-2">
+        <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-secundario btn-lg m-2">
             <i class="fas fa-tasks"></i> Ver Requisiciones Activas
         </a>
-        <a href="{{ url_for('historial_requisiciones') }}" class="btn btn-secondary btn-lg m-2">
+        <a href="{{ url_for('historial_requisiciones') }}" class="btn btn-secundario btn-lg m-2">
             <i class="fas fa-history"></i> Ver Historial
         </a>
     </div>
