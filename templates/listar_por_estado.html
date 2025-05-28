@@ -2,6 +2,7 @@
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
   <h1 class="page-title">Requisiciones — {{ title }}</h1>
+  <div class="table-responsive mt-4">
   <table class="table table-striped">
     <thead>
       <tr>
@@ -33,4 +34,5 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 {% endblock %}
