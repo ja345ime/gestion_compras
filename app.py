@@ -25,6 +25,14 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 app = Flask(__name__)
+
+import logging
+from logging.handlers import RotatingFileHandler
+
+if not app.debug:
+    handler = RotatingFileHandler('error.log', maxBytes=100000, backupCount=3)
+    handler.setLevel(logging.ERROR)
+    app.logger.addHandler(handler)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'requisiciones.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -1014,9 +1022,8 @@ def ver_requisicion(requisicion_id):
     try:
         requisicion = Requisicion.query.get(requisicion_id)
     except Exception as e:
-        app.logger.error(f"Error obteniendo requisicion {requisicion_id}: {e}", exc_info=True)
-        flash('Error al cargar la requisición.', 'danger')
-        return redirect(url_for('listar_requisiciones'))
+        app.logger.error(f"Error al ver requisición: {str(e)}", exc_info=True)
+        abort(500)
 
     if requisicion is None:
         flash('Requisición no encontrada.', 'danger')
@@ -1195,9 +1202,8 @@ def editar_requisicion(requisicion_id):
     try:
         requisicion_a_editar = Requisicion.query.get(requisicion_id)
     except Exception as e:
-        app.logger.error(f"Error obteniendo requisicion {requisicion_id} para editar: {e}", exc_info=True)
-        flash('Error al cargar la requisición.', 'danger')
-        return redirect(url_for('listar_requisiciones'))
+        app.logger.error(f"Error al editar requisición: {str(e)}", exc_info=True)
+        abort(500)
 
     if requisicion_a_editar is None:
         flash('Requisición no encontrada.', 'danger')
@@ -1269,8 +1275,8 @@ def editar_requisicion(requisicion_id):
             return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_editar.id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar la requisición: {str(e)}', 'danger')
-            app.logger.error(f"Error al editar requisicion {requisicion_id}: {e}", exc_info=True)
+            app.logger.error(f"Error al editar requisición: {str(e)}", exc_info=True)
+            abort(500)
     
     productos_sugerencias = obtener_sugerencias_productos()
     return render_template('editar_requisicion.html', form=form, title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}",
