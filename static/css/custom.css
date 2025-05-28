@@ -1,6 +1,9 @@
 /* Fuente global */
 body {
   font-family: 'Poppins', sans-serif;
+  background: linear-gradient(rgba(244, 247, 249, 0.85), rgba(244, 247, 249, 0.85)), url('../images/fondo_galpones.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: #333;
 }
 
 /* Colores base */
@@ -20,6 +23,20 @@ body {
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
+.btn-secundario {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-secundario:hover {
+  background-color: #5a6268;
+  transform: scale(1.03);
+}
 .btn-granja:hover {
   background-color: #e08e0b;
   transform: scale(1.03);
