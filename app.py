@@ -59,10 +59,22 @@ def ensure_session_token_column():
             )
             db.session.commit()
 
+def ensure_ultimo_login_column():
+    """Adds ultimo_login column if missing."""
+    inspector = inspect(db.engine)
+    if 'usuario' in inspector.get_table_names():
+        cols = [c['name'] for c in inspector.get_columns('usuario')]
+        if 'ultimo_login' not in cols:
+            db.session.execute(
+                'ALTER TABLE usuario ADD COLUMN ultimo_login DATETIME'
+            )
+            db.session.commit()
+
 
 with app.app_context():
     try:
         ensure_session_token_column()
+        ensure_ultimo_login_column()
     except Exception as exc:
         app.logger.warning(f'No se pudo actualizar la base de datos: {exc}')
 
@@ -172,6 +184,7 @@ class Usuario(db.Model, UserMixin):
     departamento_id = db.Column(db.Integer, db.ForeignKey('departamento.id'), nullable=True)
     rol_id = db.Column(db.Integer, db.ForeignKey('rol.id'), nullable=False)
     session_token = db.Column(db.String(100), nullable=True)
+    ultimo_login = db.Column(db.DateTime, nullable=True)
     requisiciones_creadas = db.relationship('Requisicion', backref='creador', lazy='dynamic', foreign_keys='Requisicion.creador_id')
 
     def set_password(self, password):
@@ -648,10 +661,13 @@ def login():
         user = Usuario.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             if user.activo:
+                previous_login = user.ultimo_login
                 user.session_token = os.urandom(24).hex()
+                user.ultimo_login = datetime.now(pytz.UTC)
                 db.session.commit()
                 login_user(user, duration=DURACION_SESION)
                 session['session_token'] = user.session_token
+                session['prev_login'] = previous_login.isoformat() if previous_login else None
                 next_page = request.args.get('next')
                 flash('Inicio de sesión exitoso.', 'success')
                 app.logger.info(f"Usuario '{user.username}' inició sesión.")
@@ -871,6 +887,20 @@ def limpiar_requisiciones_viejas_route():
 @app.route('/')
 @login_required
 def index():
+    nuevas = 0
+    roles_notificados = ['Almacen', 'Compras', 'Admin']
+    if current_user.rol_asignado and current_user.rol_asignado.nombre in roles_notificados:
+        prev_login_str = session.pop('prev_login', None)
+        last_login = None
+        if prev_login_str:
+            try:
+                last_login = datetime.fromisoformat(prev_login_str)
+            except ValueError:
+                last_login = None
+        if last_login:
+            nuevas = Requisicion.query.filter(Requisicion.fecha_creacion > last_login).count()
+    if nuevas > 0:
+        flash(f'🔔 Tienes {nuevas} requisiciones nuevas desde tu última sesión.', 'info')
     return render_template('inicio.html', title="Inicio", usuario=current_user)
 
 
