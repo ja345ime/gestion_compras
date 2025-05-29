@@ -200,6 +200,7 @@ class Requisicion(db.Model):
     observaciones = db.Column(db.Text, nullable=True)
     creador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     comentario_estado = db.Column(db.Text, nullable=True)
+    url_pdf_drive = db.Column(db.String(255), nullable=True)
     detalles = db.relationship('DetalleRequisicion', backref='requisicion', lazy=True, cascade="all, delete-orphan")
 
 class DetalleRequisicion(db.Model):
@@ -602,6 +603,20 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
         db.session.rollback()
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
         return False
+
+    if nuevo_estado in ['Cerrada', 'Rechazada por Compras', 'Cancelada']:
+        try:
+            nombre_pdf = f"requisicion_{requisicion.numero_requisicion}.pdf"
+            ruta_pdf = os.path.join(app.root_path, 'static', 'pdf', f'requisicion_{requisicion.id}.pdf')
+            url = subir_pdf_a_drive(nombre_pdf, ruta_pdf)
+            if url:
+                requisicion.url_pdf_drive = url
+                db.session.commit()
+        except Exception as exc:
+            app.logger.error(
+                f"Error subiendo PDF de requisicion {requisicion.id} a Drive: {exc}",
+                exc_info=True,
+            )
 
     mensaje_solicitante = generar_mensaje_correo(
         'Solicitante', requisicion, nuevo_estado, comentario or ""
@@ -1621,6 +1636,22 @@ def generar_pdf_requisicion(requisicion):
     ]
 
     return _crear_pdf_minimo(cabecera, detalles)
+
+
+def subir_pdf_a_drive(nombre_archivo: str, ruta_local_pdf: str) -> str | None:
+    """Sube el PDF a Google Drive y devuelve la URL pública.
+
+    Esta función es un marcador de posición y debe implementarse con la lógica
+    real de subida. Retorna ``None`` si ocurre un error.
+    """
+    try:
+        app.logger.info(f"Subiendo {ruta_local_pdf} a Drive como {nombre_archivo}")
+        # Aquí iría la lógica real de subida a Google Drive
+        url = f"https://drive.example.com/{nombre_archivo}"
+        return url
+    except Exception as exc:
+        app.logger.error(f"Error subiendo {ruta_local_pdf} a Drive: {exc}")
+        return None
 
 
 def guardar_pdf_requisicion(requisicion):
