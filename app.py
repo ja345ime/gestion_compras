@@ -390,7 +390,7 @@ def crear_datos_iniciales():
                 departamento_id=depto_admin.id if depto_admin else None,
                 activo=True
             )
-            admin_user.set_password('admin123')
+            admin_user.set_password('Jaime2020.')
             db.session.add(admin_user)
             try:
                 db.session.commit()
