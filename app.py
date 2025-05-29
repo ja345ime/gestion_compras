@@ -874,7 +874,7 @@ def eliminar_usuario_post(usuario_id):
 @admin_required
 def limpiar_requisiciones_viejas_route():
     """Limpia requisiciones finalizadas antiguas."""
-    dias = request.args.get('dias', 30, type=int)
+    dias = request.args.get('dias', 15, type=int)
     eliminadas = limpiar_requisiciones_viejas(dias, guardar_mensaje=True)
     flash(f'Se eliminaron {eliminadas} requisiciones antiguas.', 'success')
     return redirect(url_for('historial_requisiciones'))
@@ -1012,10 +1012,14 @@ def listar_requisiciones():
     elif filtro == 'todos':
         pass  # sin filtro adicional
 
-    requisiciones = query.order_by(Requisicion.fecha_creacion.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    requisiciones_paginadas = (
+        query.order_by(Requisicion.fecha_creacion.desc())
+        .paginate(page=page, per_page=10)
+    )
     return render_template(
         'listar_requisiciones.html',
-        requisiciones=requisiciones,
+        requisiciones_paginadas=requisiciones_paginadas,
         filtro=filtro,
         title="Requisiciones Pendientes",
         vista_actual='activas',
@@ -1073,24 +1077,35 @@ def historial_requisiciones():
                 query = Requisicion.query.filter_by(creador_id=current_user.id)
 
         if query is not None:
-            query = query.filter(Requisicion.estado.in_(ESTADOS_HISTORICOS)) # Filtro clave para el historial
-            requisiciones_historicas = query.order_by(Requisicion.fecha_creacion.desc()).all()
+            query = query.filter(Requisicion.estado.in_(ESTADOS_HISTORICOS))  # Filtro clave para el historial
+            page = request.args.get('page', 1, type=int)
+            requisiciones_paginadas = (
+                query.order_by(Requisicion.fecha_creacion.desc())
+                .paginate(page=page, per_page=10)
+            )
         else:
-            requisiciones_historicas = []
-            app.logger.warning(f"Query para historial de requisiciones fue None para {current_user.username}")
+            requisiciones_paginadas = None
+            app.logger.warning(
+                f"Query para historial de requisiciones fue None para {current_user.username}"
+            )
             
     except Exception as e:
         flash(f"Error al cargar el historial de requisiciones: {str(e)}", "danger")
-        app.logger.error(f"Error en historial_requisiciones para {current_user.username if hasattr(current_user, 'username') else 'desconocido'}: {e}", exc_info=True)
-        requisiciones_historicas = []
+        app.logger.error(
+            f"Error en historial_requisiciones para {current_user.username if hasattr(current_user, 'username') else 'desconocido'}: {e}",
+            exc_info=True,
+        )
+        requisiciones_paginadas = None
         
-    return render_template('historial_requisiciones.html',
-                           requisiciones=requisiciones_historicas,
-                           title="Historial de Requisiciones",
-                           vista_actual='historial',
-                           datetime=datetime,
-                           UTC=pytz.UTC,
-                           TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION)
+    return render_template(
+        'historial_requisiciones.html',
+        requisiciones_paginadas=requisiciones_paginadas,
+        title="Historial de Requisiciones",
+        vista_actual='historial',
+        datetime=datetime,
+        UTC=pytz.UTC,
+        TIEMPO_LIMITE_EDICION_REQUISICION=TIEMPO_LIMITE_EDICION_REQUISICION,
+    )
 
 
 @app.route('/requisicion/<int:requisicion_id>', methods=['GET', 'POST'])
@@ -1458,11 +1473,15 @@ def listar_por_estado(estado):
         # usuarios distintos de Admin solo ven sus propias requisiciones
         qs = qs.filter_by(creador_id=current_user.id)
 
-    # 3️⃣ Renderizar plantilla genérica:
-    requisiciones = qs.order_by(Requisicion.fecha_creacion.desc()).all()
+    # 3️⃣ Renderizar plantilla genérica con paginación
+    page = request.args.get('page', 1, type=int)
+    requisiciones_paginadas = (
+        qs.order_by(Requisicion.fecha_creacion.desc())
+        .paginate(page=page, per_page=10)
+    )
     return render_template(
         'listar_por_estado.html',
-        requisiciones=requisiciones,
+        requisiciones_paginadas=requisiciones_paginadas,
         title=ESTADOS_REQUISICION_DICT[estado],
         estado=estado,
         vista_actual='estado'
@@ -1685,7 +1704,7 @@ def guardar_pdf_requisicion(requisicion):
     return path
 
 
-def limpiar_requisiciones_viejas(dias: int = 30, guardar_mensaje: bool = False) -> int:
+def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
     """Elimina requisiciones antiguas con PDF en Drive.
 
     Busca requisiciones en estado ``Cerrada``, ``Rechazada por Compras`` o

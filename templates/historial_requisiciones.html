@@ -29,7 +29,7 @@
     {% endif %}
 {% endwith %}
 
-{% if requisiciones %}
+{% if requisiciones_paginadas and requisiciones_paginadas.items %}
     <div class="table-responsive mt-4">
         <table class="table table-bordered table-hover">
             <thead class="thead-light">
@@ -45,7 +45,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for req in requisiciones %}
+                {% for req in requisiciones_paginadas.items %}
                 <tr>
                     <td>{{ req.numero_requisicion }}</td>
                     <td>{{ req.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</td>
@@ -66,7 +66,31 @@
             </tbody>
         </table>
     </div>
+    {% if requisiciones_paginadas.pages > 1 %}
+    <nav aria-label="Paginación de historial">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not requisiciones_paginadas.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('historial_requisiciones', page=requisiciones_paginadas.prev_num) if requisiciones_paginadas.has_prev else '#'}}">&laquo; Anterior</a>
+            </li>
+            {% for page_num in requisiciones_paginadas.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if requisiciones_paginadas.page == page_num %}
+                    <li class="page-item active"><a class="page-link" href="{{ url_for('historial_requisiciones', page=page_num) }}">{{ page_num }}</a></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('historial_requisiciones', page=page_num) }}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not requisiciones_paginadas.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('historial_requisiciones', page=requisiciones_paginadas.next_num) if requisiciones_paginadas.has_next else '#'}}">Siguiente &raquo;</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
 {% else %}
     <p class="no-requisiciones mt-4">No hay requisiciones en el historial para mostrar según sus permisos y filtros.</p>
 {% endif %}
 {% endblock %}
+
