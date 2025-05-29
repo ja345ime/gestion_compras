@@ -70,11 +70,23 @@ def ensure_ultimo_login_column():
             )
             db.session.commit()
 
+def ensure_en_historial_column():
+    """Adds en_historial column to requisicion table if missing."""
+    inspector = inspect(db.engine)
+    if 'requisicion' in inspector.get_table_names():
+        cols = [c['name'] for c in inspector.get_columns('requisicion')]
+        if 'en_historial' not in cols:
+            db.session.execute(
+                'ALTER TABLE requisicion ADD COLUMN en_historial BOOLEAN DEFAULT 0 NOT NULL'
+            )
+            db.session.commit()
+
 
 with app.app_context():
     try:
         ensure_session_token_column()
         ensure_ultimo_login_column()
+        ensure_en_historial_column()
     except Exception as exc:
         app.logger.warning(f'No se pudo actualizar la base de datos: {exc}')
 
@@ -215,6 +227,7 @@ class Requisicion(db.Model):
     creador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     comentario_estado = db.Column(db.Text, nullable=True)
     url_pdf_drive = db.Column(db.String(255), nullable=True)
+    en_historial = db.Column(db.Boolean, default=False, nullable=False)
     detalles = db.relationship('DetalleRequisicion', backref='requisicion', lazy=True, cascade="all, delete-orphan")
 
 class DetalleRequisicion(db.Model):
@@ -1760,20 +1773,19 @@ def guardar_pdf_requisicion(requisicion):
 
 
 def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
-    """Elimina requisiciones antiguas subiéndolas primero a Drive si es necesario.
+    """Elimina requisiciones en historial antiguas subiéndolas a Drive si falta el PDF.
 
-    Se consideran solo aquellas en ``ESTADOS_HISTORICOS`` con más de ``dias`` días
-    desde su ``fecha_creacion``. Si alguna no posee ``url_pdf_drive`` se genera su
-    PDF con :func:`generar_pdf_requisicion`, se sube usando
-    :func:`subir_pdf_a_drive` y se guarda el enlace antes de eliminarla. Si la
-    subida falla la requisición no se elimina. Retorna cuántas fueron eliminadas.
+    Toda requisición con ``en_historial`` verdadero y ``fecha_creacion`` anterior a
+    ``datetime.now() - timedelta(days=dias)`` se considera para eliminación. Si no
+    tiene ``url_pdf_drive`` se genera el PDF y se sube con :func:`subir_pdf_a_drive`.
+    Solo se elimina si la subida es exitosa. Devuelve cuántas fueron eliminadas.
     """
 
     limite = datetime.now(pytz.UTC) - timedelta(days=dias)
     try:
         requisiciones = (
             Requisicion.query
-            .filter(Requisicion.estado.in_(ESTADOS_HISTORICOS))
+            .filter(Requisicion.en_historial.is_(True))
             .filter(Requisicion.fecha_creacion < limite)
             .all()
         )
@@ -1797,6 +1809,7 @@ def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) 
                     if url:
                         req.url_pdf_drive = url
                         db.session.commit()
+                        app.logger.info(f"Requisicion {req.id} subida a Drive")
                         subidas += 1
                     else:
                         subida_exitosa = False
@@ -1813,6 +1826,7 @@ def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) 
                     db.session.delete(req)
                     db.session.commit()
                     eliminadas += 1
+                    app.logger.info(f"Requisicion {req.id} eliminada")
                 except Exception as exc:
                     db.session.rollback()
                     app.logger.error(
