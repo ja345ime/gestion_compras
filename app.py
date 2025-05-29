@@ -605,19 +605,6 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
         return False
 
-    if nuevo_estado in ['Cerrada', 'Rechazada por Compras', 'Cancelada']:
-        try:
-            nombre_pdf = f"requisicion_{requisicion.numero_requisicion}.pdf"
-            ruta_pdf = os.path.join(app.root_path, 'static', 'pdf', f'requisicion_{requisicion.id}.pdf')
-            url = subir_pdf_a_drive(nombre_pdf, ruta_pdf)
-            if url:
-                requisicion.url_pdf_drive = url
-                db.session.commit()
-        except Exception as exc:
-            app.logger.error(
-                f"Error subiendo PDF de requisicion {requisicion.id} a Drive: {exc}",
-                exc_info=True,
-            )
 
     mensaje_solicitante = generar_mensaje_correo(
         'Solicitante', requisicion, nuevo_estado, comentario or ""
