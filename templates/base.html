@@ -222,7 +222,19 @@
                 </div>
             {% endif %}
         {% endwith %}
-        
+
+        {% if session.get('notificacion_limpieza') and current_user.is_authenticated and current_user.rol_asignado and current_user.rol_asignado.nombre in ['Compras', 'Almacén'] %}
+            <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1050; width: auto; max-width: 400px;">
+                <div class="alert alert-info alert-dismissible fade show shadow-sm" role="alert" style="margin-bottom: 10px;">
+                    {{ session['notificacion_limpieza'] }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </div>
+            {% set _ = session.pop('notificacion_limpieza', None) %}
+        {% endif %}
+
         {% block content %}{% endblock %}
     </main>
 
