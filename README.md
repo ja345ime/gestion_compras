@@ -2,18 +2,16 @@
 
 Este sistema permite la gestión digital de requisiciones internas, aprobaciones por área y automatización de notificaciones por correo.
 
-## 📧 Configuración SMTP (Brevo / Sendinblue)
+## 📧 Configuración de correos (Brevo / Sendinblue)
 
-El sistema utiliza un archivo `.env` para conectar con el servidor SMTP de Brevo y enviar notificaciones automáticas.
+El sistema envía las notificaciones a través de la API transaccional de Brevo. Todas las credenciales deben especificarse en el archivo `.env`.
 
 ### Variables requeridas
 
 ```env
-SMTP_SERVER=smtp-relay.brevo.com
-SMTP_PORT=587
-SMTP_USER=tu_usuario_brevo@example.com
-SMTP_PASSWORD=tu_clave_smtp_de_brevo
-MAIL_FROM=notificaciones@granjalosmolinos.com
+BREVO_API_KEY=tu_api_key_de_brevo
+BREVO_SENDER_EMAIL=notificaciones@granjalosmolinos.com
+BREVO_SENDER_NAME=Granja Los Molinos
 SECRET_KEY=tu_clave_secreta_de_flask
 FLASK_DEBUG=0
 ```
