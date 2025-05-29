@@ -868,6 +868,17 @@ def eliminar_usuario_post(usuario_id):
         app.logger.error(f"Error al eliminar usuario {usuario_id}: {e}", exc_info=True)
     return redirect(url_for('listar_usuarios'))
 
+
+@app.route('/admin/limpiar_requisiciones_viejas')
+@login_required
+@admin_required
+def limpiar_requisiciones_viejas_route():
+    """Limpia requisiciones finalizadas antiguas."""
+    dias = request.args.get('dias', 30, type=int)
+    eliminadas = limpiar_requisiciones_viejas(dias)
+    flash(f'Se eliminaron {eliminadas} requisiciones antiguas.', 'success')
+    return redirect(url_for('historial_requisiciones'))
+
 # --- Rutas de Requisiciones ---
 @app.route('/')
 @login_required
@@ -1672,6 +1683,38 @@ def guardar_pdf_requisicion(requisicion):
         app.logger.error(f'Error guardando PDF {path}: {e}', exc_info=True)
         return None
     return path
+
+
+def limpiar_requisiciones_viejas(dias: int = 30) -> int:
+    """Elimina requisiciones antiguas con PDF en Drive.
+
+    Busca requisiciones en estado ``Cerrada``, ``Rechazada por Compras`` o
+    ``Cancelada`` que tengan más de ``dias`` días de creadas y que ya posean un
+    enlace guardado en ``url_pdf_drive``. Retorna cuántas fueron eliminadas.
+    """
+    limite = datetime.now(pytz.UTC) - timedelta(days=dias)
+    try:
+        q = (
+            Requisicion.query
+            .filter(Requisicion.estado.in_(['Cerrada', 'Rechazada por Compras', 'Cancelada']))
+            .filter(Requisicion.fecha_creacion < limite)
+            .filter(Requisicion.url_pdf_drive.isnot(None))
+            .filter(Requisicion.url_pdf_drive != '')
+        )
+        requisiciones = q.all()
+        eliminadas = len(requisiciones)
+        for req in requisiciones:
+            db.session.delete(req)
+        if eliminadas:
+            db.session.commit()
+        app.logger.info(f"limpiar_requisiciones_viejas: {eliminadas} eliminadas")
+        return eliminadas
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.error(
+            f"Error en limpiar_requisiciones_viejas: {exc}", exc_info=True
+        )
+        return 0
 
 
 @app.route('/requisicion/<int:requisicion_id>/imprimir')
