@@ -20,8 +20,7 @@ from markupsafe import Markup
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from functools import wraps
-import smtplib
-from email.mime.text import MIMEText
+import requests
 from email_utils import render_correo_html
 import base64
 
@@ -535,40 +534,41 @@ def generar_mensaje_correo(
     return html
 
 
-def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
-    """Envía un correo en un hilo separado para no bloquear la aplicación."""
-    smtp_server = app.config.get('SMTP_SERVER')
-    if not smtp_server or not destinatarios:
-        app.logger.warning('SMTP no configurado o sin destinatarios, correo no enviado')
+def enviar_correo_api(destinatarios: list, asunto: str, html_content: str) -> None:
+    """Envía correos usando la API de Brevo."""
+    api_key = os.getenv('BREVO_API_KEY')
+    sender_email = os.getenv('BREVO_SENDER_EMAIL', os.getenv('MAIL_FROM'))
+    sender_name = os.getenv('BREVO_SENDER_NAME', 'Sistema')
+
+    if not api_key or not sender_email or not destinatarios:
+        app.logger.warning('Brevo API no configurada o sin destinatarios, correo no enviado')
         return
 
-    smtp_port = app.config.get('SMTP_PORT', 587)
-    smtp_user = app.config.get('SMTP_USER')
-    smtp_password = app.config.get('SMTP_PASSWORD')
-    remitente = app.config.get('MAIL_FROM') or smtp_user
+    payload = {
+        'sender': {'name': sender_name, 'email': sender_email},
+        'to': [{'email': d} for d in destinatarios],
+        'subject': asunto,
+        'htmlContent': html_content,
+    }
 
-    def _send():
-        try:
-            with smtplib.SMTP(smtp_server, smtp_port) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                if smtp_user and smtp_password:
-                    server.login(smtp_user, smtp_password)
+    headers = {
+        'api-key': api_key,
+        'Content-Type': 'application/json',
+    }
 
-                msg = MIMEText(mensaje, 'html', 'utf-8')
-                msg['Subject'] = asunto
-                msg['From'] = remitente
-                msg['To'] = ', '.join(destinatarios)
+    try:
+        resp = requests.post('https://api.brevo.com/v3/smtp/email', json=payload, headers=headers, timeout=10)
+        if 200 <= resp.status_code < 300:
+            app.logger.info(f"Correo enviado via Brevo API a {destinatarios} con asunto '{asunto}'")
+        else:
+            app.logger.error(f"Error Brevo API {resp.status_code}: {resp.text}")
+    except Exception as exc:
+        app.logger.error(f"Error enviando correo via Brevo API: {exc}")
 
-                server.send_message(msg)
-                app.logger.info(
-                    f"Correo enviado a {destinatarios} con asunto '{asunto}'"
-                )
-        except Exception as e:
-            app.logger.error(f"Error enviando correo: {e}")
 
-    Thread(target=_send, daemon=True).start()
+def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
+    """Envía un correo en un hilo separado para no bloquear la aplicación."""
+    Thread(target=enviar_correo_api, args=(destinatarios, asunto, mensaje), daemon=True).start()
 
 
 def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
