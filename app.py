@@ -875,7 +875,7 @@ def eliminar_usuario_post(usuario_id):
 def limpiar_requisiciones_viejas_route():
     """Limpia requisiciones finalizadas antiguas."""
     dias = request.args.get('dias', 30, type=int)
-    eliminadas = limpiar_requisiciones_viejas(dias)
+    eliminadas = limpiar_requisiciones_viejas(dias, guardar_mensaje=True)
     flash(f'Se eliminaron {eliminadas} requisiciones antiguas.', 'success')
     return redirect(url_for('historial_requisiciones'))
 
@@ -1685,7 +1685,7 @@ def guardar_pdf_requisicion(requisicion):
     return path
 
 
-def limpiar_requisiciones_viejas(dias: int = 30) -> int:
+def limpiar_requisiciones_viejas(dias: int = 30, guardar_mensaje: bool = False) -> int:
     """Elimina requisiciones antiguas con PDF en Drive.
 
     Busca requisiciones en estado ``Cerrada``, ``Rechazada por Compras`` o
@@ -1707,6 +1707,11 @@ def limpiar_requisiciones_viejas(dias: int = 30) -> int:
             db.session.delete(req)
         if eliminadas:
             db.session.commit()
+            if guardar_mensaje:
+                session['notificacion_limpieza'] = (
+                    f"Se eliminaron {eliminadas} requisiciones del sistema. "
+                    "Fueron enviadas a Drive."
+                )
         app.logger.info(f"limpiar_requisiciones_viejas: {eliminadas} eliminadas")
         return eliminadas
     except Exception as exc:
