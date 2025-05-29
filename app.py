@@ -1689,16 +1689,53 @@ def generar_pdf_requisicion(requisicion):
 def subir_pdf_a_drive(nombre_archivo: str, ruta_local_pdf: str) -> str | None:
     """Sube el PDF a Google Drive y devuelve la URL pública.
 
-    Esta función es un marcador de posición y debe implementarse con la lógica
-    real de subida. Retorna ``None`` si ocurre un error.
+    Utiliza un archivo de servicio ``service_account.json`` para
+    autenticar la llamada a la API de Drive. El identificador de la
+    carpeta destino se obtiene de la variable de entorno
+    ``GOOGLE_DRIVE_FOLDER_ID``.
     """
     try:
-        app.logger.info(f"Subiendo {ruta_local_pdf} a Drive como {nombre_archivo}")
-        # Aquí iría la lógica real de subida a Google Drive
-        url = f"https://drive.example.com/{nombre_archivo}"
-        return url
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+        from google.oauth2.service_account import Credentials
+
+        folder_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID')
+        if not folder_id:
+            app.logger.error('GOOGLE_DRIVE_FOLDER_ID no configurado')
+            return None
+
+        creds = Credentials.from_service_account_file(
+            os.path.join(app.root_path, 'service_account.json'),
+            scopes=['https://www.googleapis.com/auth/drive']
+        )
+
+        service = build('drive', 'v3', credentials=creds)
+
+        file_metadata = {
+            'name': nombre_archivo,
+            'parents': [folder_id],
+        }
+        media = MediaFileUpload(ruta_local_pdf, mimetype='application/pdf')
+
+        respuesta = (
+            service.files()
+            .create(body=file_metadata, media_body=media, fields='id,webViewLink,webContentLink')
+            .execute()
+        )
+
+        file_id = respuesta.get('id')
+        if file_id:
+            service.permissions().create(
+                fileId=file_id,
+                body={'role': 'reader', 'type': 'anyone'},
+            ).execute()
+
+        return respuesta.get('webViewLink') or respuesta.get('webContentLink')
     except Exception as exc:
-        app.logger.error(f"Error subiendo {ruta_local_pdf} a Drive: {exc}")
+        app.logger.error(
+            f"Error subiendo {ruta_local_pdf} a Drive: {exc}",
+            exc_info=True,
+        )
         return None
 
 
