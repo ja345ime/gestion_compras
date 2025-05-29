@@ -1725,24 +1725,28 @@ def guardar_pdf_requisicion(requisicion):
 def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
     """Elimina requisiciones antiguas subiéndolas primero a Drive si es necesario.
 
-    Busca requisiciones en estado ``Cerrada``, ``Rechazada por Compras`` o
-    ``Cancelada`` con más de ``dias`` días desde su creación. Si alguna no tiene
-    un enlace en ``url_pdf_drive`` se genera el PDF con
-    :func:`generar_pdf_requisicion` y se sube a Drive con
-    :func:`subir_pdf_a_drive`. Solo si la subida fue exitosa se elimina la
-    requisición. Retorna cuántas fueron eliminadas.
+    Se consideran solo aquellas en ``ESTADOS_HISTORICOS`` con más de ``dias`` días
+    desde su ``fecha_creacion``. Si alguna no posee ``url_pdf_drive`` se genera su
+    PDF con :func:`generar_pdf_requisicion`, se sube usando
+    :func:`subir_pdf_a_drive` y se guarda el enlace antes de eliminarla. Si la
+    subida falla la requisición no se elimina. Retorna cuántas fueron eliminadas.
     """
+
     limite = datetime.now(pytz.UTC) - timedelta(days=dias)
     try:
-        q = (
+        requisiciones = (
             Requisicion.query
-            .filter(Requisicion.estado.in_(['Cerrada', 'Rechazada por Compras', 'Cancelada']))
+            .filter(Requisicion.estado.in_(ESTADOS_HISTORICOS))
             .filter(Requisicion.fecha_creacion < limite)
+            .all()
         )
-        requisiciones = q.all()
+
         eliminadas = 0
         subidas = 0
+
         for req in requisiciones:
+            subida_exitosa = True
+
             if not req.url_pdf_drive:
                 try:
                     pdf_bytes = generar_pdf_requisicion(req)
@@ -1752,32 +1756,42 @@ def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) 
                         nombre = f"requisicion_{req.numero_requisicion}.pdf"
                         url = subir_pdf_a_drive(nombre, tmp.name)
                     os.remove(tmp.name)
+
                     if url:
                         req.url_pdf_drive = url
+                        db.session.commit()
                         subidas += 1
                     else:
-                        continue
+                        subida_exitosa = False
                 except Exception as exc:
+                    db.session.rollback()
                     app.logger.error(
                         f"Error generando/subiendo PDF de requisicion {req.id}: {exc}",
                         exc_info=True,
                     )
-                    continue
-            # Si llegamos aquí es porque existe url_pdf_drive
-            if req.url_pdf_drive:
-                db.session.delete(req)
-                eliminadas += 1
-        if eliminadas or subidas:
-            db.session.commit()
-            if guardar_mensaje and eliminadas:
-                session['notificacion_limpieza'] = (
-                    f"Se eliminaron {eliminadas} requisiciones del sistema. "
-                    f"{subidas} PDFs fueron subidos a Drive."
-                )
+                    subida_exitosa = False
+
+            if req.url_pdf_drive and subida_exitosa:
+                try:
+                    db.session.delete(req)
+                    db.session.commit()
+                    eliminadas += 1
+                except Exception as exc:
+                    db.session.rollback()
+                    app.logger.error(
+                        f"Error eliminando requisicion {req.id}: {exc}", exc_info=True
+                    )
+
+        if guardar_mensaje and eliminadas:
+            session['notificacion_limpieza'] = (
+                f"Se eliminaron {eliminadas} requisiciones del sistema. {subidas} PDFs fueron subidos a Drive."
+            )
+
         app.logger.info(
             f"limpiar_requisiciones_viejas: {subidas} subidas, {eliminadas} eliminadas"
         )
         return eliminadas
+
     except Exception as exc:
         db.session.rollback()
         app.logger.error(
