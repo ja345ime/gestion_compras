@@ -70,23 +70,10 @@ def ensure_ultimo_login_column():
             )
             db.session.commit()
 
-def ensure_en_historial_column():
-    """Adds en_historial column to requisicion table if missing."""
-    inspector = inspect(db.engine)
-    if 'requisicion' in inspector.get_table_names():
-        cols = [c['name'] for c in inspector.get_columns('requisicion')]
-        if 'en_historial' not in cols:
-            db.session.execute(
-                'ALTER TABLE requisicion ADD COLUMN en_historial BOOLEAN DEFAULT 0 NOT NULL'
-            )
-            db.session.commit()
-
-
 with app.app_context():
     try:
         ensure_session_token_column()
         ensure_ultimo_login_column()
-        ensure_en_historial_column()
     except Exception as exc:
         app.logger.warning(f'No se pudo actualizar la base de datos: {exc}')
 
@@ -227,7 +214,6 @@ class Requisicion(db.Model):
     creador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     comentario_estado = db.Column(db.Text, nullable=True)
     url_pdf_drive = db.Column(db.String(255), nullable=True)
-    en_historial = db.Column(db.Boolean, default=False, nullable=False)
     detalles = db.relationship('DetalleRequisicion', backref='requisicion', lazy=True, cascade="all, delete-orphan")
 
 class DetalleRequisicion(db.Model):
@@ -1775,18 +1761,17 @@ def guardar_pdf_requisicion(requisicion):
 def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
     """Elimina requisiciones que llevan más de ``dias`` días en el historial.
 
-    Se toman únicamente aquellas con la marca ``en_historial`` y cuya
-    ``fecha_creacion`` sea anterior al límite calculado. No se aplica ningún
-    filtro adicional por estado. Si ``url_pdf_drive`` está vacío se genera el
-    PDF y se sube a Drive, eliminando la requisición solo cuando la subida es
-    exitosa. Devuelve la cantidad eliminada.
+    Se toman únicamente aquellas cuyo ``estado`` pertenece a ``ESTADOS_HISTORICOS``
+    y cuya ``fecha_creacion`` sea anterior al límite calculado. Si ``url_pdf_drive``
+    está vacío se genera el PDF y se sube a Drive, eliminando la requisición solo
+    cuando la subida es exitosa. Devuelve la cantidad eliminada.
     """
 
     fecha_limite = datetime.now(pytz.UTC) - timedelta(days=dias)
     try:
         requisiciones = (
             Requisicion.query
-            .filter(Requisicion.en_historial.is_(True))
+            .filter(Requisicion.estado.in_(ESTADOS_HISTORICOS))
             .filter(Requisicion.fecha_creacion < fecha_limite)
             .all()
         )
