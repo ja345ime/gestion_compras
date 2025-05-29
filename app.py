@@ -1773,20 +1773,21 @@ def guardar_pdf_requisicion(requisicion):
 
 
 def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
-    """Elimina requisiciones en historial antiguas subiéndolas a Drive si falta el PDF.
+    """Elimina requisiciones que llevan más de ``dias`` días en el historial.
 
-    Toda requisición con ``en_historial`` verdadero y ``fecha_creacion`` anterior a
-    ``datetime.now() - timedelta(days=dias)`` se considera para eliminación. Si no
-    tiene ``url_pdf_drive`` se genera el PDF y se sube con :func:`subir_pdf_a_drive`.
-    Solo se elimina si la subida es exitosa. Devuelve cuántas fueron eliminadas.
+    Se toman únicamente aquellas con la marca ``en_historial`` y cuya
+    ``fecha_creacion`` sea anterior al límite calculado. No se aplica ningún
+    filtro adicional por estado. Si ``url_pdf_drive`` está vacío se genera el
+    PDF y se sube a Drive, eliminando la requisición solo cuando la subida es
+    exitosa. Devuelve la cantidad eliminada.
     """
 
-    limite = datetime.now(pytz.UTC) - timedelta(days=dias)
+    fecha_limite = datetime.now(pytz.UTC) - timedelta(days=dias)
     try:
         requisiciones = (
             Requisicion.query
             .filter(Requisicion.en_historial.is_(True))
-            .filter(Requisicion.fecha_creacion < limite)
+            .filter(Requisicion.fecha_creacion < fecha_limite)
             .all()
         )
 
@@ -1821,7 +1822,7 @@ def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) 
                     )
                     subida_exitosa = False
 
-            if req.url_pdf_drive and subida_exitosa:
+            if subida_exitosa and req.url_pdf_drive:
                 try:
                     db.session.delete(req)
                     db.session.commit()
