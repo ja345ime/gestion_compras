@@ -443,7 +443,8 @@ def crear_datos_iniciales():
             "Almacen": "Puede revisar stock y aprobar para compra o surtir.",
             "Compras": "Puede gestionar el proceso de compra de requisiciones aprobadas.",
             "Produccion": "Rol específico para requisiciones de producción.",
-            "Admin": "Acceso total al sistema."
+            "Admin": "Acceso total al sistema.",
+            "Superadmin": "Superadministrador del sistema"
         }
         for nombre_rol, desc_rol in roles_a_crear.items():
             if not Rol.query.filter_by(nombre=nombre_rol).first():
@@ -848,9 +849,11 @@ def crear_usuario():
                         final_departamento_id = None
 
                 rol_asignado = db.session.get(Rol, form.rol_id.data)
-                if rol_asignado and rol_asignado.nombre == 'Admin' and not current_user.superadmin:
-                    flash('Solo un superadministrador puede asignar el rol Admin.', 'danger')
+                if rol_asignado and rol_asignado.nombre in ['Admin', 'Superadmin'] and not current_user.superadmin:
+                    flash('Solo un superadministrador puede asignar los roles Admin o Superadmin.', 'danger')
                     return redirect(url_for('listar_usuarios'))
+
+                superadmin_flag = rol_asignado.nombre == 'Superadmin'
 
                 nuevo_usuario = Usuario(
                     username=form.username.data,
@@ -859,7 +862,8 @@ def crear_usuario():
                     email=form.email.data if form.email.data else None,
                     rol_id=form.rol_id.data,
                     departamento_id=final_departamento_id,
-                    activo=form.activo.data
+                    activo=form.activo.data,
+                    superadmin=superadmin_flag
                 )
                 nuevo_usuario.set_password(form.password.data)
                 db.session.add(nuevo_usuario)
@@ -940,6 +944,8 @@ def editar_usuario(usuario_id):
                 usuario.email = form.email.data if form.email.data else None
                 if current_user.superadmin:
                     usuario.rol_id = form.rol_id.data
+                    nuevo_rol = db.session.get(Rol, form.rol_id.data)
+                    usuario.superadmin = nuevo_rol.nombre == 'Superadmin'
                 depto_str = form.departamento_id.data
                 usuario.departamento_id = int(depto_str) if depto_str and depto_str != '0' else None
                 usuario.activo = form.activo.data
@@ -959,7 +965,13 @@ def editar_usuario(usuario_id):
                 flash(f'Ocurrió un error inesperado al actualizar el usuario: {str(e)}', 'danger')
                 app.logger.error(f"Error inesperado al editar usuario {usuario_id}: {e}", exc_info=True)
 
-    return render_template('admin/editar_usuario.html', form=form, usuario_id=usuario.id, title="Editar Usuario")
+    roles = Rol.query.all()
+    departamentos = Departamento.query.all()
+    return render_template('admin/editar_usuario.html', form=form,
+                           usuario_id=usuario.id,
+                           roles=roles,
+                           departamentos=departamentos,
+                           title="Editar Usuario")
 
 
 @app.route('/admin/usuarios/<int:usuario_id>/confirmar_eliminar')
