@@ -1069,6 +1069,10 @@ def dashboard():
 @login_required
 def crear_requisicion():
     form = RequisicionForm()
+    departamentos = Departamento.query.order_by(Departamento.nombre).all()
+    form.departamento_nombre.choices = [('', 'Seleccione un departamento...')] + [
+        (d.nombre, d.nombre) for d in departamentos
+    ]
     if request.method == 'GET':
         if current_user.is_authenticated:
             if current_user.nombre_completo:
@@ -1086,7 +1090,14 @@ def crear_requisicion():
             if not departamento_seleccionado:
                 flash('Error: El departamento seleccionado no es válido.', 'danger')
                 productos_sugerencias = obtener_sugerencias_productos()
-                return render_template('crear_requisicion.html', form=form, title="Crear Nueva Requisición", unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS, productos_sugerencias=productos_sugerencias)
+                return render_template(
+                    'crear_requisicion.html',
+                    form=form,
+                    departamentos=departamentos,
+                    title="Crear Nueva Requisición",
+                    unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
+                    productos_sugerencias=productos_sugerencias,
+                )
 
             nueva_requisicion = Requisicion(
                 numero_requisicion='RQ-' + datetime.now().strftime('%Y%m%d%H%M%S%f'),
@@ -1136,9 +1147,14 @@ def crear_requisicion():
             return redirect(url_for('requisicion_creada', requisicion_id=nueva_requisicion.id))
     
     productos_sugerencias = obtener_sugerencias_productos()
-    return render_template('crear_requisicion.html', form=form, title="Crear Nueva Requisición",
-                           unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
-                           productos_sugerencias=productos_sugerencias)
+    return render_template(
+        'crear_requisicion.html',
+        form=form,
+        departamentos=departamentos,
+        title="Crear Nueva Requisición",
+        unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
+        productos_sugerencias=productos_sugerencias,
+    )
 
 
 @app.route('/requisicion/<int:requisicion_id>/creada')
