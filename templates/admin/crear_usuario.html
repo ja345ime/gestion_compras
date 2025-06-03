@@ -75,7 +75,11 @@
             <div class="form-row">
                 <div class="form-group col-md-6">
                     {{ form.rol_id.label(class="form-label") }}
-                    {{ form.rol_id(class="form-control" + (" is-invalid" if form.rol_id.errors else "")) }}
+                    <select name="{{ form.rol_id.name }}" class="form-control{% if form.rol_id.errors %} is-invalid{% endif %}">
+                        {% for rol in roles %}
+                            <option value="{{ rol.id }}" {% if form.rol_id.data == rol.id %}selected{% endif %}>{{ rol.nombre }}</option>
+                        {% endfor %}
+                    </select>
                     {% if form.rol_id.errors %}
                         <div class="invalid-feedback">
                             {% for error in form.rol_id.errors %}<span>{{ error }}</span><br>{% endfor %}
@@ -84,7 +88,12 @@
                 </div>
                 <div class="form-group col-md-6">
                     {{ form.departamento_id.label(class="form-label") }}
-                    {{ form.departamento_id(class="form-control" + (" is-invalid" if form.departamento_id.errors else "")) }}
+                    <select name="{{ form.departamento_id.name }}" class="form-control{% if form.departamento_id.errors %} is-invalid{% endif %}">
+                        <option value="0" {% if form.departamento_id.data in [None, '0', 0] %}selected{% endif %}>Ninguno (Opcional)</option>
+                        {% for departamento in departamentos %}
+                            <option value="{{ departamento.id }}" {% if form.departamento_id.data|string == departamento.id|string %}selected{% endif %}>{{ departamento.nombre }}</option>
+                        {% endfor %}
+                    </select>
                     {% if form.departamento_id.errors %}
                         <div class="invalid-feedback">
                             {% for error in form.departamento_id.errors %}<span>{{ error }}</span><br>{% endfor %}
