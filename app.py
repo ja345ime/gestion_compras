@@ -10,6 +10,7 @@ from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, FieldList, FormField, PasswordField, BooleanField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 import pytz
@@ -38,7 +39,7 @@ if not app.debug:
     handler.setLevel(logging.ERROR)
     app.logger.addHandler(handler)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'requisiciones.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///:memory:')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
 app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
@@ -46,6 +47,7 @@ app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
 app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
 app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM')
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
 def ensure_session_token_column():
@@ -182,6 +184,7 @@ class Usuario(db.Model, UserMixin):
     activo = db.Column(db.Boolean, default=True, nullable=False)
     departamento_id = db.Column(db.Integer, db.ForeignKey('departamento.id'), nullable=True)
     rol_id = db.Column(db.Integer, db.ForeignKey('rol.id'), nullable=False)
+    superadmin = db.Column(db.Boolean, default=False)
     session_token = db.Column(db.String(100), nullable=True)
     ultimo_login = db.Column(db.DateTime, nullable=True)
     requisiciones_creadas = db.relationship('Requisicion', backref='creador', lazy='dynamic', foreign_keys='Requisicion.creador_id')
@@ -228,6 +231,25 @@ class ProductoCatalogo(db.Model):
     __tablename__ = 'producto_catalogo'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), unique=True, nullable=False)
+
+
+class IntentoLoginFallido(db.Model):
+    __tablename__ = 'intento_login_fallido'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=True)
+    ip = db.Column(db.String(45), nullable=False)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC))
+    exito = db.Column(db.Boolean, default=False)
+
+
+class AuditoriaAcciones(db.Model):
+    __tablename__ = 'auditoria_acciones'
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    accion = db.Column(db.String(50), nullable=False)
+    modulo = db.Column(db.String(100), nullable=False)
+    objeto = db.Column(db.String(100), nullable=True)
+    fecha = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC))
 
 # --- Formularios ---
 # (LoginForm, UserForm, DetalleRequisicionForm, RequisicionForm, CambiarEstadoForm como en tu archivo)
@@ -345,6 +367,45 @@ def admin_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def superadmin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.superadmin:
+            flash('Acceso restringido a superadministradores.', 'danger')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def registrar_intento(ip: str, username: str | None, exito: bool) -> None:
+    try:
+        intento = IntentoLoginFallido(ip=ip, username=username, exito=exito)
+        db.session.add(intento)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def exceso_intentos(ip: str, username: str | None) -> bool:
+    limite = datetime.now(pytz.UTC) - timedelta(minutes=10)
+    fallidos_ip = (
+        IntentoLoginFallido.query.filter_by(ip=ip, exito=False)
+        .filter(IntentoLoginFallido.timestamp >= limite)
+        .count()
+    )
+    if fallidos_ip >= 5:
+        return True
+    if username:
+        fallidos_user = (
+            IntentoLoginFallido.query.filter_by(username=username, exito=False)
+            .filter(IntentoLoginFallido.timestamp >= limite)
+            .count()
+        )
+        if fallidos_user >= 5:
+            return True
+    return False
 
 # --- Funciones Auxiliares ---
 @login_manager.user_loader
@@ -656,7 +717,12 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     form = LoginForm()
+    ip_addr = request.remote_addr
     if form.validate_on_submit():
+        if exceso_intentos(ip_addr, form.username.data):
+            flash('Demasiados intentos. Inténtalo más tarde.', 'danger')
+            return render_template('login.html', title='Iniciar Sesión', form=form)
+
         user = Usuario.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             if user.activo:
@@ -667,6 +733,7 @@ def login():
                 login_user(user, duration=DURACION_SESION)
                 session['session_token'] = user.session_token
                 session['prev_login'] = previous_login.isoformat() if previous_login else None
+                registrar_intento(ip_addr, user.username, True)
                 next_page = request.args.get('next')
                 flash('Inicio de sesión exitoso.', 'success')
                 app.logger.info(f"Usuario '{user.username}' inició sesión.")
@@ -676,6 +743,7 @@ def login():
                 app.logger.warning(f"Intento de login de usuario desactivado: {form.username.data}")
         else:
             flash('Nombre de usuario o contraseña incorrectos.', 'danger')
+            registrar_intento(ip_addr, form.username.data, False)
             app.logger.warning(f"Intento de login fallido para usuario: {form.username.data}")
     return render_template('login.html', title='Iniciar Sesión', form=form)
 
@@ -779,6 +847,9 @@ def crear_usuario_admin():
 @admin_required
 def editar_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
+    if usuario.superadmin and not current_user.superadmin:
+        flash('No puede editar a un superadministrador.', 'danger')
+        return redirect(url_for('listar_usuarios'))
     form = EditUserForm(obj=usuario)
     if request.method == 'GET':
         form.departamento_id.data = str(usuario.departamento_id) if usuario.departamento_id else '0'
@@ -812,7 +883,8 @@ def editar_usuario(usuario_id):
                 usuario.cedula = form.cedula.data
                 usuario.nombre_completo = form.nombre_completo.data
                 usuario.email = form.email.data if form.email.data else None
-                usuario.rol_id = form.rol_id.data
+                if current_user.superadmin:
+                    usuario.rol_id = form.rol_id.data
                 depto_str = form.departamento_id.data
                 usuario.departamento_id = int(depto_str) if depto_str and depto_str != '0' else None
                 usuario.activo = form.activo.data
@@ -851,7 +923,7 @@ def confirmar_eliminar_usuario(usuario_id):
 
 @app.route('/admin/usuarios/<int:usuario_id>/eliminar', methods=['POST'])
 @login_required
-@admin_required
+@superadmin_required
 def eliminar_usuario_post(usuario_id):
     form = ConfirmarEliminarUsuarioForm()
     usuario = Usuario.query.get_or_404(usuario_id)
@@ -901,6 +973,26 @@ def index():
     if nuevas > 0:
         flash(f'🔔 Tienes {nuevas} requisiciones nuevas desde tu última sesión.', 'info')
     return render_template('inicio.html', title="Inicio", usuario=current_user)
+
+
+@app.route('/dashboard')
+@login_required
+@admin_required
+def dashboard():
+    total_requisiciones = Requisicion.query.count()
+    promedio_dias = db.session.query(
+        db.func.avg(db.func.extract('epoch', Requisicion.fecha_modificacion - Requisicion.fecha_creacion) / 86400.0)
+    ).scalar() or 0
+    recientes = (
+        AuditoriaAcciones.query.order_by(AuditoriaAcciones.fecha.desc()).limit(5).all()
+    )
+    return render_template(
+        'dashboard.html',
+        total_requisiciones=total_requisiciones,
+        promedio_dias=promedio_dias,
+        recientes=recientes,
+        title='Dashboard'
+    )
 
 
 @app.route('/requisiciones/crear', methods=['GET', 'POST'])
