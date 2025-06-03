@@ -800,11 +800,21 @@ def listar_usuarios():
 @app.route('/admin/usuarios/crear', methods=['GET', 'POST'])
 @login_required
 @admin_required
-@superadmin_required
-def crear_usuario_admin():
+def crear_usuario():
+    """Permite a un administrador crear nuevos usuarios."""
     form = UserForm()
     roles = Rol.query.all()
     departamentos = Departamento.query.all()
+
+    if not current_user.superadmin:
+        roles = [r for r in roles if r.nombre != 'Admin']
+        if current_user.departamento_id:
+            departamentos = [current_user.departamento_asignado]
+
+    form.rol_id.choices = [(r.id, r.nombre) for r in roles]
+    form.departamento_id.choices = [('0', 'Ninguno (Opcional)')] + [
+        (str(d.id), d.nombre) for d in departamentos
+    ]
     if form.validate_on_submit():
         try:
             existing_user_username = Usuario.query.filter_by(username=form.username.data).first()
