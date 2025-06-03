@@ -459,23 +459,28 @@ def crear_datos_iniciales():
         admin_rol = Rol.query.filter_by(nombre="Admin").first()
         depto_admin = Departamento.query.filter_by(nombre="Administración").first()
         if admin_rol and not Usuario.query.filter_by(username='admin').first():
-            admin_user = Usuario(
-                username='admin',
-                cedula='V00000000',
-                email='admin@example.com',
-                nombre_completo='Administrador Sistema',
-                rol_id=admin_rol.id,
-                departamento_id=depto_admin.id if depto_admin else None,
-                activo=True
-            )
-            admin_user.set_password('admin123')
-            db.session.add(admin_user)
-            try:
-                db.session.commit()
-                app.logger.info("Usuario administrador 'admin' creado.")
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"Error al crear usuario admin: {e}")
+            admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
+            admin_password = os.environ.get('ADMIN_PASSWORD')
+            if not admin_password:
+                app.logger.error('ADMIN_PASSWORD no configurada; no se creó usuario admin.')
+            else:
+                admin_user = Usuario(
+                    username='admin',
+                    cedula='V00000000',
+                    email=admin_email,
+                    nombre_completo='Administrador Sistema',
+                    rol_id=admin_rol.id,
+                    departamento_id=depto_admin.id if depto_admin else None,
+                    activo=True
+                )
+                admin_user.set_password(admin_password)
+                db.session.add(admin_user)
+                try:
+                    db.session.commit()
+                    app.logger.info("Usuario administrador 'admin' creado.")
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.error(f"Error al crear usuario admin: {e}")
 
 def agregar_producto_al_catalogo(nombre_producto):
     if nombre_producto and nombre_producto.strip():
