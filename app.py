@@ -807,7 +807,7 @@ def crear_usuario():
     departamentos = Departamento.query.all()
 
     if not current_user.superadmin:
-        roles = [r for r in roles if r.nombre != 'Admin']
+        roles = [r for r in roles if r.nombre != 'Superadmin']
         if current_user.departamento_id:
             departamentos = [current_user.departamento_asignado]
 
