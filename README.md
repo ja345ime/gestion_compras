@@ -28,6 +28,16 @@ FLASK_DEBUG=0
 
 Se recomienda usar Nginx como proxy inverso.
 
+Al iniciar por primera vez ejecuta `python create_admin.py` para
+asegurar que exista el usuario `admin` con privilegios de superadministrador.
+Aplica las migraciones con:
+
+```bash
+flask db init   # solo la primera vez
+flask db migrate -m "init"
+flask db upgrade
+```
+
 ### Instalación rápida
 
 Para instalar todas las dependencias y ejecutar el servidor utiliza:
@@ -44,8 +54,8 @@ valor puede modificarse cambiando la constante `DURACION_SESION` en `app.py`.
 
 Si luego de actualizar obtienes un **Internal Server Error**, asegúrate de que
 la base de datos tenga la columna `session_token`. La aplicación intentará
-crearla automáticamente al iniciar. Si el archivo `requisiciones.db` es antiguo
-o carece de permisos de escritura, elimínalo para que se genere nuevamente.
+crearla automáticamente al iniciar. Utiliza PostgreSQL especificando
+`DATABASE_URL` en el archivo `.env` y gestiona el esquema con `Flask-Migrate`.
 
 
 
@@ -78,12 +88,18 @@ utilizando un dominio o una IP interna como `http://192.168.x.x/`.
 
 ### Reiniciar base de datos en pruebas
 
-1. Elimina el archivo `requisiciones.db`.
-2. Ejecuta el siguiente código para recrear las tablas y los datos iniciales:
+1. Ejecuta el siguiente código para recrear las tablas y los datos iniciales
+   en una base temporal de pruebas:
 
 ```python
 from app import db, crear_datos_iniciales, app
 with app.app_context():
     db.create_all()
-    crear_datos_iniciales()
+   crear_datos_iniciales()
 ```
+
+### Respaldos automáticos
+
+Ejecuta `backup_daily.sh` desde cron para guardar un volcado de la base de datos
+en la carpeta definida por `BACKUP_DIR` (por defecto `/backups`). El resultado de
+cada respaldo se registra en `backup.log`.
