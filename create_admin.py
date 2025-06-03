@@ -6,9 +6,9 @@ load_dotenv()
 from app import db, Usuario, Rol, app
 
 with app.app_context():
-    rol = Rol.query.filter_by(nombre='Admin').first()
+    rol = Rol.query.filter_by(nombre='Superadmin').first()
     if not rol:
-        rol = Rol(nombre='Admin', descripcion='Administrador')
+        rol = Rol(nombre='Superadmin', descripcion='Superadministrador')
         db.session.add(rol)
         db.session.commit()
 
