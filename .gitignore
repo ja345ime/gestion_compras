@@ -5,5 +5,8 @@ logs/
 static/pdf/
 venv/
 
+requisiciones.db
+backups/
+*.sql
+backup.log
 service_account.json
-migrations/

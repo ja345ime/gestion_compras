@@ -39,7 +39,9 @@ if not app.debug:
     handler.setLevel(logging.ERROR)
     app.logger.addHandler(handler)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///:memory:')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL', 'postgresql://localhost/gestion_compras'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
 app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
@@ -250,6 +252,22 @@ class AuditoriaAcciones(db.Model):
     modulo = db.Column(db.String(100), nullable=False)
     objeto = db.Column(db.String(100), nullable=True)
     fecha = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC))
+
+
+def registrar_accion(usuario_id: int | None, modulo: str, objeto: str | None, accion: str) -> None:
+    """Guarda en AuditoriaAcciones la acción realizada."""
+    try:
+        entrada = AuditoriaAcciones(
+            usuario_id=usuario_id,
+            modulo=modulo,
+            objeto=objeto,
+            accion=accion,
+        )
+        db.session.add(entrada)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.error(f"Error al registrar auditoría: {exc}")
 
 # --- Formularios ---
 # (LoginForm, UserForm, DetalleRequisicionForm, RequisicionForm, CambiarEstadoForm como en tu archivo)
@@ -673,6 +691,12 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
         requisicion.comentario_estado = comentario
     try:
         db.session.commit()
+        registrar_accion(
+            current_user.id if current_user.is_authenticated else None,
+            'Requisiciones',
+            str(requisicion_id),
+            f'estado:{nuevo_estado}'
+        )
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
@@ -771,6 +795,7 @@ def listar_usuarios():
 @app.route('/admin/usuarios/crear', methods=['GET', 'POST'])
 @login_required
 @admin_required
+@superadmin_required
 def crear_usuario_admin():
     form = UserForm()
     if form.validate_on_submit():
@@ -798,13 +823,18 @@ def crear_usuario_admin():
             if not error_occurred:
                 departamento_id_str = form.departamento_id.data
                 final_departamento_id = None
-                if departamento_id_str and departamento_id_str != '0': 
+                if departamento_id_str and departamento_id_str != '0':
                     try:
                         final_departamento_id = int(departamento_id_str)
                     except ValueError:
                         flash('Valor de departamento no válido. Se asignará "Ninguno".', 'warning')
                         final_departamento_id = None
-                
+
+                rol_asignado = db.session.get(Rol, form.rol_id.data)
+                if rol_asignado and rol_asignado.nombre == 'Admin' and not current_user.superadmin:
+                    flash('Solo un superadministrador puede asignar el rol Admin.', 'danger')
+                    return redirect(url_for('listar_usuarios'))
+
                 nuevo_usuario = Usuario(
                     username=form.username.data,
                     cedula=form.cedula.data,
@@ -817,6 +847,7 @@ def crear_usuario_admin():
                 nuevo_usuario.set_password(form.password.data)
                 db.session.add(nuevo_usuario)
                 db.session.commit()
+                registrar_accion(current_user.id, 'Usuarios', nuevo_usuario.username, 'crear')
                 flash(f'Usuario "{nuevo_usuario.username}" creado exitosamente.', 'success')
                 return redirect(url_for('listar_usuarios'))
         
@@ -845,6 +876,7 @@ def crear_usuario_admin():
 @app.route('/admin/usuarios/<int:usuario_id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
+@superadmin_required
 def editar_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.superadmin and not current_user.superadmin:
@@ -892,6 +924,7 @@ def editar_usuario(usuario_id):
                     usuario.set_password(form.password.data)
                     usuario.session_token = None
                 db.session.commit()
+                registrar_accion(current_user.id, 'Usuarios', usuario.username, 'editar')
                 flash(f'Usuario "{usuario.username}" actualizado exitosamente.', 'success')
                 return redirect(url_for('listar_usuarios'))
             except IntegrityError as e:
@@ -923,6 +956,7 @@ def confirmar_eliminar_usuario(usuario_id):
 
 @app.route('/admin/usuarios/<int:usuario_id>/eliminar', methods=['POST'])
 @login_required
+@admin_required
 @superadmin_required
 def eliminar_usuario_post(usuario_id):
     form = ConfirmarEliminarUsuarioForm()
@@ -936,6 +970,7 @@ def eliminar_usuario_post(usuario_id):
     try:
         db.session.delete(usuario)
         db.session.commit()
+        registrar_accion(current_user.id, 'Usuarios', usuario.username, 'eliminar')
         flash(f'Usuario {usuario.username} eliminado con éxito.', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1528,6 +1563,7 @@ def eliminar_requisicion_post(requisicion_id):
     try:
         db.session.delete(requisicion_a_eliminar)
         db.session.commit()
+        registrar_accion(current_user.id, 'Requisiciones', requisicion_a_eliminar.numero_requisicion, 'eliminar')
         flash(f'Requisicion {requisicion_a_eliminar.numero_requisicion} eliminada con éxito.', 'success')
     except Exception as e:
         db.session.rollback()
