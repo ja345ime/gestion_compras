@@ -4,3 +4,6 @@ __pycache__/
 logs/
 static/pdf/
 venv/
+
+service_account.json
+migrations/

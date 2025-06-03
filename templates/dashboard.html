@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Dashboard</h2>
+<p>Total de requisiciones: {{ total_requisiciones }}</p>
+<p>Promedio de días por requisición: {{ promedio_dias|round(2) }}</p>
+<h3>Últimas actividades</h3>
+<ul>
+  {% for a in recientes %}
+    <li>{{ a.fecha }} - {{ a.accion }} en {{ a.modulo }} ({{ a.objeto }})</li>
+  {% endfor %}
+</ul>
+{% endblock %}
