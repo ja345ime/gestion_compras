@@ -170,7 +170,12 @@
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         {{ form.departamento_nombre.label }}
-                        {{ form.departamento_nombre(class="form-control" + (" is-invalid" if form.departamento_nombre.errors else "")) }}
+                        <select name="{{ form.departamento_nombre.name }}" class="form-control{% if form.departamento_nombre.errors %} is-invalid{% endif %}">
+                            <option value="" {% if not form.departamento_nombre.data %}selected{% endif %}>Seleccione un departamento...</option>
+                            {% for departamento in departamentos %}
+                                <option value="{{ departamento.nombre }}" {% if form.departamento_nombre.data == departamento.nombre %}selected{% endif %}>{{ departamento.nombre }}</option>
+                            {% endfor %}
+                        </select>
                         {% for error in form.departamento_nombre.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
