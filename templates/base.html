@@ -147,7 +147,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNavDropdown">
                 <ul class="navbar-nav mr-auto">
-                    <li class="nav-item dropdown {% if request.endpoint in ['index', 'listar_requisiciones', 'historial_requisiciones', 'crear_requisicion', 'listar_usuarios', 'crear_usuario_admin'] %}active{% endif %}">
+                    <li class="nav-item dropdown {% if request.endpoint in ['index', 'listar_requisiciones', 'historial_requisiciones', 'crear_requisicion', 'listar_usuarios', 'crear_usuario'] %}active{% endif %}">
                         <a class="nav-link dropdown-toggle" href="#" id="mainMenuDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-bars"></i> Menú
                         </a>
@@ -170,7 +170,7 @@
                                     <a class="dropdown-item" href="{{ url_for('listar_usuarios') }}">
                                         <i class="fas fa-users"></i> Gestionar Usuarios
                                     </a>
-                                    <a class="dropdown-item" href="{{ url_for('crear_usuario_admin') }}">
+                                    <a class="dropdown-item" href="{{ url_for('crear_usuario') }}">
                                         <i class="fas fa-user-plus"></i> Crear Usuario
                                     </a>
                                 {% endif %}
