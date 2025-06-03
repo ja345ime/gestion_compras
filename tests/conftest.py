@@ -1,5 +1,9 @@
+import os
 import pytest
 from uuid import uuid4
+
+# Configurar password de administrador para pruebas
+os.environ.setdefault("ADMIN_PASSWORD", "admin123")
 
 from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion
 
