@@ -803,6 +803,8 @@ def listar_usuarios():
 @superadmin_required
 def crear_usuario_admin():
     form = UserForm()
+    roles = Rol.query.all()
+    departamentos = Departamento.query.all()
     if form.validate_on_submit():
         try:
             existing_user_username = Usuario.query.filter_by(username=form.username.data).first()
@@ -875,7 +877,13 @@ def crear_usuario_admin():
             flash(f'Ocurrió un error inesperado al crear el usuario: {str(e)}', 'danger')
             app.logger.error(f"Error inesperado al crear usuario: {e}", exc_info=True)
             
-    return render_template('admin/crear_usuario.html', form=form, title="Crear Nuevo Usuario")
+    return render_template(
+        'admin/crear_usuario.html',
+        form=form,
+        roles=roles,
+        departamentos=departamentos,
+        title="Crear Nuevo Usuario"
+    )
 
 
 @app.route('/admin/usuarios/<int:usuario_id>/editar', methods=['GET', 'POST'])
