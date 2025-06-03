@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from app import db, Usuario, Rol, app
 
 with app.app_context():
@@ -26,7 +31,11 @@ with app.app_context():
             activo=True,
             superadmin=True
         )
-        admin.set_password('admin123')
+        password = os.getenv("ADMIN_PASSWORD")
+        if not password:
+            print("ERROR: ADMIN_PASSWORD no está definida en el archivo .env")
+            exit(1)
+        admin.set_password(password)
         db.session.add(admin)
         db.session.commit()
         print('Superadmin creado')

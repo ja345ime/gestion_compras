@@ -13,6 +13,7 @@ BREVO_API_KEY=tu_api_key_de_brevo
 BREVO_SENDER_EMAIL=notificaciones@granjalosmolinos.com
 BREVO_SENDER_NAME=Granja Los Molinos
 SECRET_KEY=tu_clave_secreta_de_flask
+ADMIN_PASSWORD=TuClaveFuerte123
 FLASK_DEBUG=0
 ```
 
