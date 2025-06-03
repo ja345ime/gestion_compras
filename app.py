@@ -352,12 +352,8 @@ class RequisicionForm(FlaskForm):
 
     def __init__(self, *args, **kwargs):
         super(RequisicionForm, self).__init__(*args, **kwargs)
-        try:
-            self.departamento_nombre.choices = [('', 'Seleccione un departamento...')] + \
-                                             [(d.nombre, d.nombre) for d in Departamento.query.order_by(Departamento.nombre).all()]
-        except Exception as e:
-            app.logger.error(f"Error al poblar departamentos en el formulario RequisicionForm: {e}")
-            self.departamento_nombre.choices = [('', 'Error al cargar departamentos')]
+        # Las opciones del departamento se cargarán desde cada vista
+        # para evitar consultas fuera de contexto de aplicación
 
 class CambiarEstadoForm(FlaskForm):
     estado = SelectField('Nuevo Estado', choices=ESTADOS_REQUISICION, validators=[DataRequired()])
@@ -1512,6 +1508,10 @@ def editar_requisicion(requisicion_id):
         return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_editar.id))
 
     form = RequisicionForm(obj=requisicion_a_editar if request.method == 'GET' else None)
+    departamentos = Departamento.query.order_by(Departamento.nombre).all()
+    form.departamento_nombre.choices = [('', 'Seleccione un departamento...')] + [
+        (d.nombre, d.nombre) for d in departamentos
+    ]
     if request.method == 'GET':
         if getattr(requisicion_a_editar, 'departamento_obj', None):
             form.departamento_nombre.data = requisicion_a_editar.departamento_obj.nombre
