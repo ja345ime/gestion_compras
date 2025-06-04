@@ -33,6 +33,8 @@ def test_admin_can_change_user_password(client, setup_db, admin_user):
     with client.application.app_context():
         rol = Rol.query.filter_by(nombre='Solicitante').first()
         depto = Departamento.query.first()
+        rol_id = rol.id
+        depto_id = depto.id if depto else None
         user = Usuario(
             username='tempuser',
             cedula='V98765432',
@@ -52,8 +54,8 @@ def test_admin_can_change_user_password(client, setup_db, admin_user):
         'cedula': 'V98765432',
         'nombre_completo': 'Temp User',
         'email': 'temp@example.com',
-        'rol_id': rol.id,
-        'departamento_id': str(depto.id if depto else 0),
+        'rol_id': rol_id,
+        'departamento_id': str(depto_id if depto_id else 0),
         'activo': 'y',
         'password': 'newpass',
         'confirm_password': 'newpass',

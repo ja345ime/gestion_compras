@@ -678,10 +678,16 @@ def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
         app.logger.warning(f"No se encontraron correos para el rol {nombre_rol}")
 
 
-def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentario: str | None = None) -> bool:
+def cambiar_estado_requisicion(
+    requisicion_id: int,
+    nuevo_estado: str,
+    usuario_actual: Usuario | None = None,
+    comentario: str | None = None,
+) -> bool:
     """Actualiza el estado de una requisición y envía notificaciones.
 
-    Devuelve ``True`` si la operación se completó correctamente.
+    ``usuario_actual`` es el usuario que realiza el cambio y se utiliza para la
+    auditoría. Devuelve ``True`` si la operación se completó correctamente.
     """
     requisicion = db.session.get(Requisicion, requisicion_id)
     if not requisicion:
@@ -694,7 +700,7 @@ def cambiar_estado_requisicion(requisicion_id: int, nuevo_estado: str, comentari
     try:
         db.session.commit()
         registrar_accion(
-            current_user.id if current_user.is_authenticated else None,
+            usuario_actual.id if usuario_actual else None,
             'Requisiciones',
             str(requisicion_id),
             f'estado:{nuevo_estado}'
@@ -1420,7 +1426,9 @@ def ver_requisicion(requisicion_id):
             if nuevo_estado in ['Rechazada por Almacén', 'Rechazada por Compras', 'Cancelada'] and not comentario_ingresado_texto:
                 flash('Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.', 'warning')
 
-            if cambiar_estado_requisicion(requisicion.id, nuevo_estado, comentario_ingresado_texto):
+            if cambiar_estado_requisicion(
+                requisicion.id, nuevo_estado, current_user, comentario_ingresado_texto
+            ):
                 flash_message = f'El estado de la requisición {requisicion.numero_requisicion} ha sido actualizado a "{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}".'
                 if comentario_ingresado_texto:
                     flash_message += " Comentario guardado."
