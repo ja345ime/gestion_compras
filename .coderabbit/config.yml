@@ -1,0 +1,18 @@
+languages:
+  - python
+  - html
+  - javascript
+
+review:
+  performance: true
+  security: true
+  readability: true
+  style: true
+  maintainability: true
+
+comment_style: suggestions
+severity_threshold: medium
+skip_test_files: false
+exclude_paths:
+  - migrations/
+  - node_modules/
