@@ -36,7 +36,13 @@ def app():
         SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
         SQLALCHEMY_ENGINE_OPTIONS={"connect_args": {"check_same_thread": False}},
     )
+    with flask_app.app_context():
+        db.create_all()
+        crear_datos_iniciales()
     yield flask_app
+    with flask_app.app_context():
+        db.session.remove()
+        db.drop_all()
 
 
 @pytest.fixture
