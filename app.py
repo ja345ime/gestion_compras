@@ -424,7 +424,12 @@ def exceso_intentos(ip: str, username: str | None) -> bool:
 # --- Funciones Auxiliares ---
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(Usuario, int(user_id))
+    try:
+        return db.session.get(Usuario, int(user_id))
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error cargando usuario {user_id}: {e}")
+        return None
 
 def crear_datos_iniciales():
     with app.app_context():
