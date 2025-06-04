@@ -99,9 +99,10 @@ def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
     enviar = mocker.patch('app.enviar_correo')
     solicitante = crear_usuario('sol2', 'Solicitante')
     compras_user = crear_usuario('comprador_test', 'Compras')
+    almacen_user = crear_usuario('almacen_apr', 'Almacen')
     req = crear_requisicion_para(solicitante)
 
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén')
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Almacén'
 
@@ -119,9 +120,12 @@ def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
 def test_rechazo_por_almacen_envia_motivo(app, mocker):
     enviar = mocker.patch('app.enviar_correo')
     solicitante = crear_usuario('sol3', 'Solicitante')
+    almacen_user = crear_usuario('almacen_rech', 'Almacen')
     req = crear_requisicion_para(solicitante)
 
-    cambiar_estado_requisicion(req.id, 'Rechazada por Almacén', 'Falta stock')
+    cambiar_estado_requisicion(
+        req.id, 'Rechazada por Almacén', almacen_user, 'Falta stock'
+    )
     assert enviar.call_count >= 1
     args = enviar.call_args[0]
     html = args[2].lower()
@@ -132,10 +136,12 @@ def test_rechazo_por_almacen_envia_motivo(app, mocker):
 def test_aprobacion_por_compras_envia_correo(app, mocker):
     enviar = mocker.patch('app.enviar_correo')
     solicitante = crear_usuario('sol4', 'Solicitante')
+    almacen_user = crear_usuario('alm_apr_comp', 'Almacen')
+    compras_act = crear_usuario('compras_act', 'Compras')
     req = crear_requisicion_para(solicitante)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén')
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
 
-    cambiar_estado_requisicion(req.id, 'Aprobada por Compras')
+    cambiar_estado_requisicion(req.id, 'Aprobada por Compras', compras_act)
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Compras'
     assert enviar.call_count >= 1
@@ -146,11 +152,12 @@ def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
     enviar = mocker.patch('app.enviar_correo')
     solicitante = crear_usuario('solpc', 'Solicitante')
     compras_user = crear_usuario('compraspc', 'Compras')
+    almacen_user = crear_usuario('alm_pc', 'Almacen')
     req = crear_requisicion_para(solicitante)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén')
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
     enviar.reset_mock()
 
-    cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar')
+    cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar', compras_user)
     db.session.refresh(req)
     assert req.estado == 'Pendiente de Cotizar'
     assert enviar.call_count >= 1
@@ -162,11 +169,12 @@ def test_cambio_a_comprada_historial(app, client, mocker):
     enviar = mocker.patch('app.enviar_correo')
     solicitante = crear_usuario('sol5', 'Solicitante')
     compras_user = crear_usuario('comprador', 'Compras')
+    almacen_user = crear_usuario('alm_hist', 'Almacen')
     req = crear_requisicion_para(solicitante)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén')
-    cambiar_estado_requisicion(req.id, 'Aprobada por Compras')
-    cambiar_estado_requisicion(req.id, 'En Proceso de Compra')
-    cambiar_estado_requisicion(req.id, 'Comprada')
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Compras', compras_user)
+    cambiar_estado_requisicion(req.id, 'En Proceso de Compra', compras_user)
+    cambiar_estado_requisicion(req.id, 'Comprada', compras_user)
 
     login(client, 'comprador')
     resp = client.get('/requisiciones/historial')
@@ -198,7 +206,7 @@ def test_visibilidad_requisiciones_por_rol(app, client):
     else:
         print("La requisición ya fue procesada por Almacén y es visible para Compras.")
 
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén')
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen)
     resp = client.get('/requisiciones')
     assert b'RQTEST' in resp.data
 
