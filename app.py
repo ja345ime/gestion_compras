@@ -905,7 +905,6 @@ def crear_usuario():
 @app.route('/admin/usuarios/<int:usuario_id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
-@superadmin_required
 def editar_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.superadmin and not current_user.superadmin:
