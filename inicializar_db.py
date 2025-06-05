@@ -8,8 +8,8 @@ if not os.path.exists(DB_FILE):
     with app.app_context():
         db.create_all()
         print("Base de datos creada exitosamente.")
-        print("Tablas creadas:", db.engine.table_names())
+        print("Tablas creadas:", list(db.metadata.tables.keys()))
 else:
     with app.app_context():
         print("La base de datos ya existe.")
-        print("Tablas existentes:", db.engine.table_names())
+        print("Tablas existentes:", list(db.metadata.tables.keys()))
