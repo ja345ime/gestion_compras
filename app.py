@@ -424,7 +424,32 @@ def exceso_intentos(ip: str, username: str | None) -> bool:
 # --- Funciones Auxiliares ---
 @login_manager.user_loader
 def load_user(user_id):
+    """Carga el usuario para Flask-Login.
+
+    Si el ``user_id`` es ``0`` se crea un usuario de administrador en
+    memoria utilizando la contraseña configurada en ``ADMIN_PASSWORD``.
+    Esto permite iniciar sesión con un superadministrador sin consultar la
+    base de datos.
+    """
     try:
+        if str(user_id) == "0":
+            admin_pwd = os.environ.get("ADMIN_PASSWORD")
+            if not admin_pwd:
+                return None
+            class AdminVirtual(UserMixin):
+                pass
+
+            usuario = AdminVirtual()
+            usuario.id = 0
+            usuario.username = "admin"
+            usuario.nombre_completo = "Administrador"
+            usuario.superadmin = True
+            usuario.activo = True
+            usuario.session_token = session.get("session_token")
+            usuario.rol_asignado = type(
+                "RolVirtual", (), {"nombre": "Superadmin"}
+            )()
+            return usuario
         return db.session.get(Usuario, int(user_id))
     except Exception as e:
         db.session.rollback()
@@ -760,6 +785,35 @@ def login():
             flash('Demasiados intentos. Inténtalo más tarde.', 'danger')
             return render_template('login.html', title='Iniciar Sesión', form=form)
 
+        # Modo especial para el usuario "admin" definido por ADMIN_PASSWORD
+        admin_pwd = os.environ.get("ADMIN_PASSWORD")
+        if (
+            form.username.data == "admin"
+            and admin_pwd
+            and form.password.data == admin_pwd
+        ):
+            class AdminVirtual(UserMixin):
+                pass
+
+            user = AdminVirtual()
+            user.id = 0
+            user.username = "admin"
+            user.nombre_completo = "Administrador"
+            user.superadmin = True
+            user.activo = True
+            user.session_token = os.urandom(24).hex()
+            user.rol_asignado = type(
+                "RolVirtual", (), {"nombre": "Superadmin"}
+            )()
+            login_user(user, duration=DURACION_SESION)
+            session["session_token"] = user.session_token
+            session["prev_login"] = None
+            registrar_intento(ip_addr, user.username, True)
+            next_page = request.args.get("next")
+            flash("Inicio de sesión exitoso.", "success")
+            app.logger.info("Usuario 'admin' inició sesión (modo especial).")
+            return redirect(next_page or url_for("index"))
+
         user = Usuario.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             if user.activo:
@@ -789,7 +843,8 @@ def login():
 def logout():
     app.logger.info(f"Usuario '{current_user.username}' cerró sesión.")
     current_user.session_token = None
-    db.session.commit()
+    if getattr(current_user, "id", None) != 0:
+        db.session.commit()
     session.pop('session_token', None)
     logout_user()
     flash('Has cerrado sesión exitosamente.', 'info')
