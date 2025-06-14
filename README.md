@@ -51,7 +51,7 @@ Para instalar todas las dependencias y ejecutar el servidor utiliza:
 
 El sistema invalida otras sesiones activas de un usuario cuando se inicia sesión
 en un nuevo dispositivo. Además, las sesiones expiran después de una hora. Este
-valor puede modificarse cambiando la constante `DURACION_SESION` en `app.py`.
+valor puede modificarse cambiando la constante `DURACION_SESION` en `app/config.py`.
 
 Si luego de actualizar obtienes un **Internal Server Error**, asegúrate de que
 la base de datos tenga la columna `session_token`. La aplicación intentará
