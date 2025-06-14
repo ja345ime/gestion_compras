@@ -27,17 +27,20 @@ from email_utils import render_correo_html
 import base64
 import click
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
+from . import models
+from .models import Rol, Usuario, Departamento, Requisicion, DetalleRequisicion, ProductoCatalogo, IntentoLoginFallido, AuditoriaAcciones, AdminVirtual
+
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
 
     if not app.debug:
         handler = RotatingFileHandler('error.log', maxBytes=100000, backupCount=3)
@@ -179,123 +182,6 @@ ESTADOS_HISTORICOS = [
 
 # --- Modelos ---
 # (Modelos Rol, Usuario, Departamento, Requisicion, DetalleRequisicion, ProductoCatalogo como en tu archivo)
-class Rol(db.Model):
-    __tablename__ = 'rol'
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(80), unique=True, nullable=False)
-    descripcion = db.Column(db.String(255), nullable=True)
-    usuarios = db.relationship('Usuario', backref='rol_asignado', lazy='dynamic', foreign_keys='Usuario.rol_id')
-
-class Usuario(db.Model, UserMixin):
-    __tablename__ = 'usuario'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    cedula = db.Column(db.String(20), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=True)
-    nombre_completo = db.Column(db.String(120), nullable=True)
-    activo = db.Column(db.Boolean, default=True, nullable=False)
-    departamento_id = db.Column(db.Integer, db.ForeignKey('departamento.id'), nullable=True)
-    rol_id = db.Column(db.Integer, db.ForeignKey('rol.id'), nullable=False)
-    superadmin = db.Column(db.Boolean, default=False)
-    session_token = db.Column(db.String(100), nullable=True)
-    ultimo_login = db.Column(db.DateTime, nullable=True)
-    requisiciones_creadas = db.relationship('Requisicion', backref='creador', lazy='dynamic', foreign_keys='Requisicion.creador_id')
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-class Departamento(db.Model):
-    __tablename__ = 'departamento'
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), unique=True, nullable=False)
-    requisiciones = db.relationship('Requisicion', backref='departamento_obj', lazy='dynamic', foreign_keys='Requisicion.departamento_id')
-    usuarios = db.relationship('Usuario', backref='departamento_asignado', lazy='dynamic', foreign_keys='Usuario.departamento_id')
-
-class Requisicion(db.Model):
-    __tablename__ = 'requisicion'
-    id = db.Column(db.Integer, primary_key=True)
-    numero_requisicion = db.Column(db.String(255), unique=True, nullable=False)
-    fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC), nullable=False)
-    fecha_modificacion = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC), onupdate=lambda: datetime.now(pytz.UTC))
-    nombre_solicitante = db.Column(db.String(255), nullable=False)
-    cedula_solicitante = db.Column(db.String(20), nullable=False)
-    correo_solicitante = db.Column(db.String(255), nullable=False)
-    departamento_id = db.Column(db.Integer, db.ForeignKey('departamento.id'), nullable=False)
-    prioridad = db.Column(db.String(50), nullable=False)
-    estado = db.Column(db.String(50), default=ESTADO_INICIAL_REQUISICION, nullable=False)
-    observaciones = db.Column(db.Text, nullable=True)
-    creador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    comentario_estado = db.Column(db.Text, nullable=True)
-    url_pdf_drive = db.Column(db.String(255), nullable=True)
-    detalles = db.relationship('DetalleRequisicion', backref='requisicion', lazy=True, cascade="all, delete-orphan")
-
-class DetalleRequisicion(db.Model):
-    __tablename__ = 'detalle_requisicion'
-    id = db.Column(db.Integer, primary_key=True)
-    requisicion_id = db.Column(db.Integer, db.ForeignKey('requisicion.id'), nullable=False)
-    producto = db.Column(db.String(255), nullable=False)
-    cantidad = db.Column(db.Numeric(10, 2), nullable=False)
-    unidad_medida = db.Column(db.String(100), nullable=False)
-
-class ProductoCatalogo(db.Model):
-    __tablename__ = 'producto_catalogo'
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(255), unique=True, nullable=False)
-
-
-class IntentoLoginFallido(db.Model):
-    __tablename__ = 'intento_login_fallido'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=True)
-    ip = db.Column(db.String(45), nullable=False)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC))
-    exito = db.Column(db.Boolean, default=False)
-
-
-class AuditoriaAcciones(db.Model):
-    __tablename__ = 'auditoria_acciones'
-    id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
-    accion = db.Column(db.String(50), nullable=False)
-    modulo = db.Column(db.String(100), nullable=False)
-    objeto = db.Column(db.String(100), nullable=True)
-    fecha = db.Column(db.DateTime, default=lambda: datetime.now(pytz.UTC))
-
-
-def registrar_accion(usuario_id: int | None, modulo: str, objeto: str | None, accion: str) -> None:
-    """Guarda en AuditoriaAcciones la acción realizada."""
-    try:
-        entrada = AuditoriaAcciones(
-            usuario_id=usuario_id,
-            modulo=modulo,
-            objeto=objeto,
-            accion=accion,
-        )
-        db.session.add(entrada)
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        app.logger.error(f"Error al registrar auditoría: {exc}")
-
-# ---------------------------------------------------------------------------- #
-#        CLASE ÚNICA Y CENTRALIZADA PARA EL ADMIN VIRTUAL (Refactorizado)      #
-# ---------------------------------------------------------------------------- #
-class AdminVirtual(UserMixin):
-    def __init__(self):
-        self.id = 0
-        self.username = "admin"
-        self.nombre_completo = "Administrador del Sistema"
-        self.superadmin = True
-        self.activo = True
-        self.session_token = None
-        # Simulamos un objeto rol para que `current_user.rol_asignado.nombre` no falle
-        self.rol_asignado = type("RolVirtual", (), {"nombre": "Superadmin"})()
-
-    def get_id(self):
-        return str(self.id)
 
 # --- Formularios ---
 # (LoginForm, UserForm, DetalleRequisicionForm, RequisicionForm, CambiarEstadoForm como en tu archivo)
@@ -608,7 +494,7 @@ def generar_mensaje_correo(
     else:
         return ""
 
-    logo_path = os.path.join(app.root_path, 'static', 'images', 'logo_granja.jpg')
+    logo_path = os.path.join(app.static_folder, 'images', 'logo_granja.jpg')
     try:
         with open(logo_path, 'rb') as f:
             logo_base64 = base64.b64encode(f.read()).decode('utf-8')
@@ -1746,7 +1632,7 @@ def listar_por_estado(estado):
 def _crear_pdf_minimo(cabecera, detalles):
     """Genera un PDF con logo y una tabla ordenada."""
     # Cargar imagen del logo
-    logo_path = os.path.join(app.root_path, 'static', 'images', 'logo_granja.jpg')
+    logo_path = os.path.join(app.static_folder, 'images', 'logo_granja.jpg')
     try:
         with open(logo_path, 'rb') as f:
             logo_bytes = f.read()
@@ -1942,7 +1828,7 @@ def subir_pdf_a_drive(nombre_archivo: str, ruta_local_pdf: str) -> str | None:
             return None
 
         creds = Credentials.from_service_account_file(
-            os.path.join(app.root_path, 'service_account.json'),
+            os.path.join(BASE_DIR, 'service_account.json'),
             scopes=['https://www.googleapis.com/auth/drive']
         )
 
@@ -1983,7 +1869,7 @@ def guardar_pdf_requisicion(requisicion):
     ``app.log`` pero no se propaga, de modo que no bloquee el flujo
     de creación de la requisición.
     """
-    pdf_dir = os.path.join(app.root_path, 'static', 'pdf')
+    pdf_dir = os.path.join(app.static_folder, 'pdf')
     os.makedirs(pdf_dir, exist_ok=True)
     path = os.path.join(pdf_dir, f'requisicion_{requisicion.id}.pdf')
     try:

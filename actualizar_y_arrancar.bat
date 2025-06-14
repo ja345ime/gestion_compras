@@ -20,5 +20,5 @@ REM Arrancar la app Flask
 echo ================================
 echo   Iniciando servidor Flask...
 echo ================================
-python app.py
+flask run
 pause
