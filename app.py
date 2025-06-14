@@ -437,7 +437,28 @@ def load_user(user_id):
             if not admin_pwd:
                 return None
             class AdminVirtual(UserMixin):
-                pass
+                def __init__(self):
+                    self.id = 0
+                    self.username = "admin"
+                    self.nombre_completo = "Administrador"
+                    self.superadmin = True
+                    self.activo = True
+                    self.session_token = None
+                    self.rol_asignado = type(
+                        "Rolvirtual", (), {"nombre": "Superadmin"}
+                    )()
+
+                def is_active(self):
+                    return True
+
+                def is_authenticated(self):
+                    return True
+
+                def is_anonymous(self):
+                    return False
+
+                def get_id(self):
+                    return "0"
 
             usuario = AdminVirtual()
             usuario.id = 0
@@ -793,7 +814,28 @@ def login():
             and form.password.data == admin_pwd
         ):
             class AdminVirtual(UserMixin):
-                pass
+                def __init__(self):
+                    self.id = 0
+                    self.username = "admin"
+                    self.nombre_completo = "Administrador"
+                    self.superadmin = True
+                    self.activo = True
+                    self.session_token = None
+                    self.rol_asignado = type(
+                        "Rolvirtual", (), {"nombre": "Superadmin"}
+                    )()
+
+                def is_active(self):
+                    return True
+
+                def is_authenticated(self):
+                    return True
+
+                def is_anonymous(self):
+                    return False
+
+                def get_id(self):
+                    return "0"
 
             user = AdminVirtual()
             user.id = 0
