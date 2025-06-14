@@ -29,7 +29,7 @@ FLASK_DEBUG=0
 
 Se recomienda usar Nginx como proxy inverso.
 
-Al iniciar por primera vez ejecuta `python create_admin.py` para
+Al iniciar por primera vez ejecuta `flask crear-admin` para
 asegurar que exista el usuario `admin` con privilegios de superadministrador.
 Aplica las migraciones con:
 
