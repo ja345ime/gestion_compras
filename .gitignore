@@ -10,3 +10,4 @@ backups/
 *.sql
 backup.log
 service_account.json
+report.html
