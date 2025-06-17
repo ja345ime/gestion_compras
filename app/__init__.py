@@ -73,7 +73,11 @@ def create_app():
     app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
 
     if not app.debug:
-        handler = RotatingFileHandler('error.log', maxBytes=100000, backupCount=3)
+        handler = RotatingFileHandler(
+            os.path.join(BASE_DIR, 'logs', 'error.log'),
+            maxBytes=100000,
+            backupCount=3,
+        )
         handler.setLevel(logging.ERROR)
         app.logger.addHandler(handler)
 
