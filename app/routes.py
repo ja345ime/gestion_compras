@@ -15,6 +15,9 @@ from . import (
     UNIDADES_DE_MEDIDA_SUGERENCIAS,
     TIEMPO_LIMITE_EDICION_REQUISICION,
     DURACION_SESION,
+)
+
+from .utils import (
     registrar_intento,
     exceso_intentos,
     agregar_producto_al_catalogo,
