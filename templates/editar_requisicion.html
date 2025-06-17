@@ -135,7 +135,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('editar_requisicion', requisicion_id=requisicion_id) }}" class="fade-in" novalidate>
+        <form method="POST" action="{{ url_for('main.editar_requisicion', requisicion_id=requisicion_id) }}" class="fade-in" novalidate>
             {{ form.hidden_tag() }} 
 
             <fieldset>
@@ -240,7 +240,7 @@
             <button type="button" id="add-detalle" class="btn btn-azul mt-2 mb-3">Añadir Otro Ítem</button>
             <hr>
             <input type="submit" value="Actualizar Requisición" class="btn btn-granja btn-lg">
-            <a href="{{ url_for('ver_requisicion', requisicion_id=requisicion_id) }}" class="btn btn-azul btn-lg ml-2">Cancelar</a>
+            <a href="{{ url_for('main.ver_requisicion', requisicion_id=requisicion_id) }}" class="btn btn-azul btn-lg ml-2">Cancelar</a>
         </form>
     </div>
 

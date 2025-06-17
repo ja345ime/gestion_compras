@@ -59,7 +59,7 @@ main = Blueprint('main', __name__)
 @main.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('main.index'))
     form = LoginForm()
     ip_addr = request.remote_addr
 
@@ -94,7 +94,7 @@ def login():
                 next_page = request.args.get('next')
                 flash('Inicio de sesión exitoso.', 'success')
                 app.logger.info(f"Usuario '{user.username}' inició sesión.")
-                return redirect(next_page or url_for('index'))
+                return redirect(next_page or url_for('main.index'))
             else:
                 flash('Esta cuenta de usuario está desactivada.', 'danger')
                 app.logger.warning(f"Intento de login de usuario desactivado: {form.username.data}")
@@ -113,7 +113,7 @@ def logout():
     session.pop('session_token', None)
     logout_user()
     flash('Has cerrado sesión exitosamente.', 'info')
-    return redirect(url_for('login'))
+    return redirect(url_for('main.login'))
 @main.route('/admin/usuarios')
 @login_required
 @admin_required
@@ -176,7 +176,7 @@ def crear_usuario():
                 rol_asignado = db.session.get(Rol, form.rol_id.data)
                 if rol_asignado and rol_asignado.nombre in ['Admin', 'Superadmin'] and not current_user.superadmin:
                     flash('Solo un superadministrador puede asignar los roles Admin o Superadmin.', 'danger')
-                    return redirect(url_for('listar_usuarios'))
+                    return redirect(url_for('main.listar_usuarios'))
 
                 superadmin_flag = rol_asignado.nombre == 'Superadmin'
 
@@ -195,7 +195,7 @@ def crear_usuario():
                 db.session.commit()
                 registrar_accion(current_user.id, 'Usuarios', nuevo_usuario.username, 'crear')
                 flash(f'Usuario "{nuevo_usuario.username}" creado exitosamente.', 'success')
-                return redirect(url_for('listar_usuarios'))
+                return redirect(url_for('main.listar_usuarios'))
         
         except IntegrityError as e: 
             db.session.rollback()
@@ -232,7 +232,7 @@ def editar_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.superadmin and not current_user.superadmin:
         flash('No puede editar a un superadministrador.', 'danger')
-        return redirect(url_for('listar_usuarios'))
+        return redirect(url_for('main.listar_usuarios'))
     form = EditUserForm(obj=usuario)
     if request.method == 'GET':
         form.departamento_id.data = str(usuario.departamento_id) if usuario.departamento_id else '0'
@@ -279,7 +279,7 @@ def editar_usuario(usuario_id):
                 db.session.commit()
                 registrar_accion(current_user.id, 'Usuarios', usuario.username, 'editar')
                 flash(f'Usuario "{usuario.username}" actualizado exitosamente.', 'success')
-                return redirect(url_for('listar_usuarios'))
+                return redirect(url_for('main.listar_usuarios'))
             except IntegrityError as e:
                 db.session.rollback()
                 flash('Error de integridad al actualizar el usuario.', 'danger')
@@ -305,7 +305,7 @@ def confirmar_eliminar_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.id == current_user.id:
         flash('No puede eliminar su propio usuario.', 'danger')
-        return redirect(url_for('editar_usuario', usuario_id=usuario_id))
+        return redirect(url_for('main.editar_usuario', usuario_id=usuario_id))
     form = ConfirmarEliminarUsuarioForm()
     return render_template('admin/confirmar_eliminar_usuario.html',
                            usuario=usuario,
@@ -322,10 +322,10 @@ def eliminar_usuario_post(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.id == current_user.id:
         flash('No puede eliminar su propio usuario.', 'danger')
-        return redirect(url_for('editar_usuario', usuario_id=usuario_id))
+        return redirect(url_for('main.editar_usuario', usuario_id=usuario_id))
     if not form.validate_on_submit():
         flash('Petición inválida.', 'danger')
-        return redirect(url_for('confirmar_eliminar_usuario', usuario_id=usuario_id))
+        return redirect(url_for('main.confirmar_eliminar_usuario', usuario_id=usuario_id))
     try:
         db.session.delete(usuario)
         db.session.commit()
@@ -335,7 +335,7 @@ def eliminar_usuario_post(usuario_id):
         db.session.rollback()
         flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
         app.logger.error(f"Error al eliminar usuario {usuario_id}: {e}", exc_info=True)
-    return redirect(url_for('listar_usuarios'))
+    return redirect(url_for('main.listar_usuarios'))
 
 
 @main.route('/admin/limpiar_requisiciones_viejas')
@@ -346,7 +346,7 @@ def limpiar_requisiciones_viejas_route():
     dias = request.args.get('dias', 15, type=int)
     eliminadas = limpiar_requisiciones_viejas(dias, guardar_mensaje=True)
     flash(f'Se eliminaron {eliminadas} requisiciones antiguas.', 'success')
-    return redirect(url_for('historial_requisiciones'))
+    return redirect(url_for('main.historial_requisiciones'))
 @main.route('/')
 @login_required
 def index():
@@ -462,7 +462,7 @@ def crear_requisicion():
                 app.logger.error(f"Error tras crear requisición {nueva_requisicion.id}: {e}", exc_info=True)
 
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
-            return redirect(url_for('requisicion_creada', requisicion_id=nueva_requisicion.id))
+            return redirect(url_for('main.requisicion_creada', requisicion_id=nueva_requisicion.id))
     
     productos_sugerencias = obtener_sugerencias_productos()
     return render_template(
@@ -627,7 +627,7 @@ def ver_requisicion(requisicion_id):
 
     if requisicion is None:
         flash('Requisición no encontrada.', 'danger')
-        return redirect(url_for('listar_requisiciones'))
+        return redirect(url_for('main.listar_requisiciones'))
 
     if not all([requisicion.numero_requisicion, requisicion.estado, requisicion.prioridad]):
         flash('La requisición tiene datos incompletos.', 'warning')
@@ -724,12 +724,12 @@ def ver_requisicion(requisicion_id):
     if request.method == 'POST' and form_estado.submit_estado.data and form_estado.validate_on_submit() :
         if not (current_user.rol_asignado and current_user.rol_asignado.nombre in ['Admin', 'Compras', 'Almacen']):
             flash('No tiene permiso para cambiar el estado de esta requisición.', 'danger')
-            return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
+            return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion.id))
 
         nuevo_estado = form_estado.estado.data
         if not any(nuevo_estado == choice[0] for choice in opciones_estado_permitidas):
             flash('Intento de cambio de estado no válido o no permitido para su rol/estado actual.', 'danger')
-            return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
+            return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion.id))
 
         comentario_ingresado_texto = form_estado.comentario_estado.data.strip() if form_estado.comentario_estado.data else None
 
@@ -748,7 +748,7 @@ def ver_requisicion(requisicion_id):
                 flash('Error al actualizar el estado.', 'danger')
         else:
             flash('No se realizaron cambios (mismo estado y sin nuevo comentario o el mismo).', 'info')
-        return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
+        return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion.id))
 
     # Usamos un datetime con zona horaria UTC para evitar errores de comparación
     ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
@@ -808,7 +808,7 @@ def editar_requisicion(requisicion_id):
 
     if requisicion_a_editar is None:
         flash('Requisición no encontrada.', 'danger')
-        return redirect(url_for('listar_requisiciones'))
+        return redirect(url_for('main.listar_requisiciones'))
 
     if not all([requisicion_a_editar.numero_requisicion, requisicion_a_editar.estado, requisicion_a_editar.prioridad]):
         flash('La requisición tiene datos incompletos.', 'warning')
@@ -823,7 +823,7 @@ def editar_requisicion(requisicion_id):
     estado_editable = requisicion_a_editar.estado == ESTADO_INICIAL_REQUISICION
     if not ((es_creador and dentro_del_limite and estado_editable) or es_admin):
         flash('No tiene permiso para editar esta requisición o el tiempo límite ha expirado.', 'danger')
-        return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_editar.id))
+        return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion_a_editar.id))
 
     form = RequisicionForm(obj=requisicion_a_editar if request.method == 'GET' else None)
     departamentos = Departamento.query.order_by(Departamento.nombre).all()
@@ -877,7 +877,7 @@ def editar_requisicion(requisicion_id):
                     agregar_producto_al_catalogo(nombre_producto_estandarizado)
             db.session.commit()
             flash(f'Requisición {requisicion_a_editar.numero_requisicion} actualizada con éxito.', 'success')
-            return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_editar.id))
+            return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion_a_editar.id))
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error al editar requisición: {str(e)}", exc_info=True)
@@ -902,7 +902,7 @@ def confirmar_eliminar_requisicion(requisicion_id):
             dentro_del_limite = True
     if not ((es_creador and dentro_del_limite) or es_admin):
         flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
-        return redirect(url_for('ver_requisicion', requisicion_id=requisicion.id))
+        return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion.id))
     form = ConfirmarEliminarForm()
     return render_template('confirmar_eliminar_requisicion.html',
                            requisicion=requisicion,
@@ -923,10 +923,10 @@ def eliminar_requisicion_post(requisicion_id):
             dentro_del_limite = True
     if not ((es_creador and dentro_del_limite) or es_admin):
         flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
-        return redirect(url_for('ver_requisicion', requisicion_id=requisicion_a_eliminar.id))
+        return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion_a_eliminar.id))
     if not form.validate_on_submit():
         flash('Petición inválida.', 'danger')
-        return redirect(url_for('confirmar_eliminar_requisicion', requisicion_id=requisicion_id))
+        return redirect(url_for('main.confirmar_eliminar_requisicion', requisicion_id=requisicion_id))
     try:
         db.session.delete(requisicion_a_eliminar)
         db.session.commit()
@@ -936,7 +936,7 @@ def eliminar_requisicion_post(requisicion_id):
         db.session.rollback()
         flash(f'Error al eliminar la requisición: {str(e)}', 'danger')
         app.logger.error(f"Error al eliminar requisicion {requisicion_id}: {e}", exc_info=True)
-    return redirect(url_for('listar_requisiciones'))
+    return redirect(url_for('main.listar_requisiciones'))
 @main.route('/requisiciones/pendientes_cotizar')
 @login_required
 def listar_pendientes_cotizar():
