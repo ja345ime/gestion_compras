@@ -6,7 +6,8 @@ from wtforms import (
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 
 from .models import Rol, Departamento
-from . import app, ESTADOS_REQUISICION
+from flask import current_app
+from .config import ESTADOS_REQUISICION
 
 
 class LoginForm(FlaskForm):
@@ -48,7 +49,7 @@ class UserForm(FlaskForm):
             depto_query = Departamento.query.order_by(Departamento.nombre).all()
             self.departamento_id.choices = [('0', 'Ninguno (Opcional)')] + [(str(d.id), d.nombre) for d in depto_query]
         except Exception as e:
-            app.logger.error(f"Error al poblar roles/departamentos en UserForm: {e}")
+            current_app.logger.error(f"Error al poblar roles/departamentos en UserForm: {e}")
             self.rol_id.choices = [('', 'Error al cargar roles')]
             self.departamento_id.choices = [('0', 'Error al cargar deptos')]
 
