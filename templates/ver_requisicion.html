@@ -6,11 +6,11 @@
 <h1 class="page-title">{{ title }}</h1>
 
 <div class="btn-actions mb-4">
-    <a href="{{ url_for('listar_requisiciones') }}" class="btn btn-azul">
+    <a href="{{ url_for('main.listar_requisiciones') }}" class="btn btn-azul">
         <i class="fas fa-arrow-left"></i> Ver Requisiciones Activas
     </a>
     {% if puede_editar %}
-        <a href="{{ url_for('editar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-granja">
+        <a href="{{ url_for('main.editar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-granja">
             <i class="fas fa-edit"></i> Editar Requisición
         </a>
     {% elif not editable_dentro_limite_original and not (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
@@ -20,12 +20,12 @@
     {% endif %}
     
     {% if puede_eliminar %}
-    <a href="{{ url_for('confirmar_eliminar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-danger">
+    <a href="{{ url_for('main.confirmar_eliminar_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-danger">
         <i class="fas fa-trash-alt"></i> Eliminar
     </a>
     {% endif %}
     {% if current_user.rol_asignado and current_user.rol_asignado.nombre in ['Compras', 'Admin'] %}
-    <a href="{{ url_for('imprimir_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-azul">
+    <a href="{{ url_for('main.imprimir_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-azul">
         <i class="fas fa-print"></i> Imprimir PDF
     </a>
     {% endif %}
@@ -86,7 +86,7 @@
         {% if puede_cambiar_estado %}
         <hr>
         <h5 class="mt-3 mb-3">Cambiar Estado de la Requisición</h5>
-        <form method="POST" action="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}" class="fade-in">
+        <form method="POST" action="{{ url_for('main.ver_requisicion', requisicion_id=requisicion.id) }}" class="fade-in">
             {{ form_estado.hidden_tag() }}
             <div class="form-row align-items-start">
                 <div class="form-group col-md-4">
