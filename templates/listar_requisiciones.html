@@ -6,39 +6,39 @@
 
 <h1 class="page-title mb-0">{{ title }}</h1>
 <div class="action-buttons">
-    <a href="{{ url_for('listar_requisiciones') }}" class="btn {% if vista_actual == 'activas' %}btn-azul{% else %}btn-granja{% endif %}">
+    <a href="{{ url_for('main.listar_requisiciones') }}" class="btn {% if vista_actual == 'activas' %}btn-azul{% else %}btn-granja{% endif %}">
         <i class="fas fa-tasks"></i> Ver Activas
     </a>
-    <a href="{{ url_for('historial_requisiciones') }}" class="btn {% if vista_actual == 'historial' %}btn-azul{% else %}btn-granja{% endif %}">
+    <a href="{{ url_for('main.historial_requisiciones') }}" class="btn {% if vista_actual == 'historial' %}btn-azul{% else %}btn-granja{% endif %}">
         <i class="fas fa-history"></i> Ver Historial
     </a>
-    <a href="{{ url_for('crear_requisicion') }}" class="btn btn-granja">
+    <a href="{{ url_for('main.crear_requisicion') }}" class="btn btn-granja">
         <i class="fas fa-plus-circle"></i> Crear Nueva Requisición
     </a>
 </div>
 
 <!-- Botones de filtro para Requisiciones Pendientes -->
 <div class="filter-buttons mb-3" aria-label="Filtros">
-  <a href="{{ url_for('listar_requisiciones', filtro='todos') }}"
+  <a href="{{ url_for('main.listar_requisiciones', filtro='todos') }}"
      class="btn btn-azul {% if filtro=='todos' %}active{% endif %}">
     Todas
   </a>
 
   {% if current_user.rol_asignado.nombre == 'Almacen' %}
-    <a href="{{ url_for('listar_requisiciones', filtro='sin_revisar') }}"
+    <a href="{{ url_for('main.listar_requisiciones', filtro='sin_revisar') }}"
        class="btn btn-azul {% if filtro=='sin_revisar' %}active{% endif %}">
       Sin Revisar
     </a>
-    <a href="{{ url_for('listar_requisiciones', filtro='por_cotizar') }}"
+    <a href="{{ url_for('main.listar_requisiciones', filtro='por_cotizar') }}"
        class="btn btn-azul {% if filtro=='por_cotizar' %}active{% endif %}">
       Enviadas a Compra
     </a>
   {% elif current_user.rol_asignado.nombre == 'Compras' %}
-    <a href="{{ url_for('listar_requisiciones', filtro='recien_llegadas') }}"
+    <a href="{{ url_for('main.listar_requisiciones', filtro='recien_llegadas') }}"
        class="btn btn-azul {% if filtro=='recien_llegadas' %}active{% endif %}">
       Llegadas de Almacén
     </a>
-    <a href="{{ url_for('listar_requisiciones', filtro='por_cotizar') }}"
+    <a href="{{ url_for('main.listar_requisiciones', filtro='por_cotizar') }}"
        class="btn btn-azul {% if filtro=='por_cotizar' %}active{% endif %}">
       Pendientes por Cotizar
     </a>
@@ -87,7 +87,7 @@
                     <td>{{ req.estado }}</td>
                     <td>
                         <!-- Ver -->
-                        <a href="{{ url_for('ver_requisicion', requisicion_id=req.id) }}" class="btn btn-azul btn-sm" title="Ver Detalles">
+                        <a href="{{ url_for('main.ver_requisicion', requisicion_id=req.id) }}" class="btn btn-azul btn-sm" title="Ver Detalles">
                             <i class="fas fa-eye"></i>
                         </a>
                         <!-- Editar -->
@@ -95,14 +95,14 @@
                         {% set fecha_creacion = req.fecha_creacion.replace(tzinfo=None) if req.fecha_creacion else None %}
                         {% set editable = fecha_creacion and (ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
                         {% if editable or (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
-                        <a href="{{ url_for('editar_requisicion', requisicion_id=req.id) }}" class="btn btn-granja btn-sm" title="Editar Requisición">
+                        <a href="{{ url_for('main.editar_requisicion', requisicion_id=req.id) }}" class="btn btn-granja btn-sm" title="Editar Requisición">
                             <i class="fas fa-pencil-alt"></i>
                         </a>
                         {% endif %}
                         <!-- Eliminar -->
                         {% set eliminable = fecha_creacion and (ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION) and req.creador_id == current_user.id %}
                         {% if eliminable or (current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin') %}
-                        <a href="{{ url_for('confirmar_eliminar_requisicion', requisicion_id=req.id) }}" class="btn btn-danger btn-sm" title="Eliminar Requisición">
+                        <a href="{{ url_for('main.confirmar_eliminar_requisicion', requisicion_id=req.id) }}" class="btn btn-danger btn-sm" title="Eliminar Requisición">
                             <i class="fas fa-trash-alt"></i>
                         </a>
                         {% endif %}
@@ -116,21 +116,21 @@
     <nav aria-label="Paginación de requisiciones">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not requisiciones_paginadas.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('listar_requisiciones', page=requisiciones_paginadas.prev_num, filtro=filtro) if requisiciones_paginadas.has_prev else '#'}}">&laquo; Anterior</a>
+                <a class="page-link" href="{{ url_for('main.listar_requisiciones', page=requisiciones_paginadas.prev_num, filtro=filtro) if requisiciones_paginadas.has_prev else '#'}}">&laquo; Anterior</a>
             </li>
             {% for page_num in requisiciones_paginadas.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                 {% if page_num %}
                     {% if requisiciones_paginadas.page == page_num %}
-                    <li class="page-item active"><a class="page-link" href="{{ url_for('listar_requisiciones', page=page_num, filtro=filtro) }}">{{ page_num }}</a></li>
+                    <li class="page-item active"><a class="page-link" href="{{ url_for('main.listar_requisiciones', page=page_num, filtro=filtro) }}">{{ page_num }}</a></li>
                     {% else %}
-                    <li class="page-item"><a class="page-link" href="{{ url_for('listar_requisiciones', page=page_num, filtro=filtro) }}">{{ page_num }}</a></li>
+                    <li class="page-item"><a class="page-link" href="{{ url_for('main.listar_requisiciones', page=page_num, filtro=filtro) }}">{{ page_num }}</a></li>
                     {% endif %}
                 {% else %}
                     <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
                 {% endif %}
             {% endfor %}
             <li class="page-item {% if not requisiciones_paginadas.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('listar_requisiciones', page=requisiciones_paginadas.next_num, filtro=filtro) if requisiciones_paginadas.has_next else '#'}}">Siguiente &raquo;</a>
+                <a class="page-link" href="{{ url_for('main.listar_requisiciones', page=requisiciones_paginadas.next_num, filtro=filtro) if requisiciones_paginadas.has_next else '#'}}">Siguiente &raquo;</a>
             </li>
         </ul>
     </nav>

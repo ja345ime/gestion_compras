@@ -138,7 +138,7 @@
 <body class="fade-in">
     <nav class="navbar navbar-expand-lg navbar-granja fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 <img src="{{ url_for('static', filename='images/logo_granja_mini.jpg') }}" alt="Logo Granja Los Molinos" class="logo-mini">
                 Granja Los Molinos
             </a>
@@ -152,25 +152,25 @@
                             <i class="fas fa-bars"></i> Menú
                         </a>
                         <div class="dropdown-menu" aria-labelledby="mainMenuDropdown">
-                            <a class="dropdown-item" href="{{ url_for('index') }}">
+                            <a class="dropdown-item" href="{{ url_for('main.index') }}">
                                 <i class="fas fa-home"></i> Inicio
                             </a>
                             {% if current_user.is_authenticated %}
-                                <a class="dropdown-item" href="{{ url_for('listar_requisiciones') }}">
+                                <a class="dropdown-item" href="{{ url_for('main.listar_requisiciones') }}">
                                     <i class="fas fa-tasks"></i> Ver Requisiciones Activas
                                 </a>
-                                <a class="dropdown-item" href="{{ url_for('historial_requisiciones') }}">
+                                <a class="dropdown-item" href="{{ url_for('main.historial_requisiciones') }}">
                                     <i class="fas fa-history"></i> Ver Historial
                                 </a>
-                                <a class="dropdown-item" href="{{ url_for('crear_requisicion') }}">
+                                <a class="dropdown-item" href="{{ url_for('main.crear_requisicion') }}">
                                     <i class="fas fa-plus-circle"></i> Crear Requisición
                                 </a>
                                 {% if current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin' %}
                                     <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item" href="{{ url_for('listar_usuarios') }}">
+                                    <a class="dropdown-item" href="{{ url_for('main.listar_usuarios') }}">
                                         <i class="fas fa-users"></i> Gestionar Usuarios
                                     </a>
-                                    <a class="dropdown-item" href="{{ url_for('crear_usuario') }}">
+                                    <a class="dropdown-item" href="{{ url_for('main.crear_usuario') }}">
                                         <i class="fas fa-user-plus"></i> Crear Usuario
                                     </a>
                                 {% endif %}
@@ -190,14 +190,14 @@
                                 ({{ current_user.rol_asignado.nombre if current_user.rol_asignado else 'Sin Rol' }})
                             </a>
                             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdownMenuLink">
-                                <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <a class="dropdown-item" href="{{ url_for('main.logout') }}">
                                     <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                                 </a>
                             </div>
                         </li>
                     {% else %}
                         <li class="nav-item {% if request.endpoint == 'login' %}active{% endif %}">
-                            <a class="nav-link" href="{{ url_for('login') }}">
+                            <a class="nav-link" href="{{ url_for('main.login') }}">
                                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                             </a>
                         </li>

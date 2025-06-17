@@ -32,10 +32,10 @@
 </div>
 
 <div class="text-center mt-4">
-    <form method="POST" action="{{ url_for('eliminar_requisicion_post', requisicion_id=requisicion.id) }}" class="d-inline-block fade-in">
+    <form method="POST" action="{{ url_for('main.eliminar_requisicion_post', requisicion_id=requisicion.id) }}" class="d-inline-block fade-in">
         {{ form.hidden_tag() }}
         {{ form.submit(class="btn btn-danger") }}
     </form>
-    <a href="{{ url_for('ver_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-azul ml-2">Cancelar</a>
+    <a href="{{ url_for('main.ver_requisicion', requisicion_id=requisicion.id) }}" class="btn btn-azul ml-2">Cancelar</a>
 </div>
 {% endblock %}

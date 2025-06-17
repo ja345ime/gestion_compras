@@ -5,7 +5,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="page-title mb-0">Gestión de Usuarios</h1>
-        <a href="{{ url_for('crear_usuario') }}" class="btn btn-granja">
+        <a href="{{ url_for('main.crear_usuario') }}" class="btn btn-granja">
             <i class="fas fa-plus-circle"></i> Crear Nuevo Usuario
         </a>
     </div>
@@ -41,7 +41,7 @@
                     </td>
                     <td>
                         {# Aquí podrías añadir botones para editar o cambiar estado de activación en el futuro #}
-                        <a href="{{ url_for('editar_usuario', usuario_id=usuario.id) }}" class="btn btn-sm btn-azul" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a href="{{ url_for('main.editar_usuario', usuario_id=usuario.id) }}" class="btn btn-sm btn-azul" title="Editar"><i class="fas fa-edit"></i></a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -54,21 +54,21 @@
     <nav aria-label="Paginación de usuarios">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not usuarios_paginados.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('listar_usuarios', page=usuarios_paginados.prev_num) if usuarios_paginados.has_prev else '#'}}">&laquo; Anterior</a>
+                <a class="page-link" href="{{ url_for('main.listar_usuarios', page=usuarios_paginados.prev_num) if usuarios_paginados.has_prev else '#'}}">&laquo; Anterior</a>
             </li>
             {% for page_num in usuarios_paginados.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                 {% if page_num %}
                     {% if usuarios_paginados.page == page_num %}
-                    <li class="page-item active"><a class="page-link" href="{{ url_for('listar_usuarios', page=page_num) }}">{{ page_num }}</a></li>
+                    <li class="page-item active"><a class="page-link" href="{{ url_for('main.listar_usuarios', page=page_num) }}">{{ page_num }}</a></li>
                     {% else %}
-                    <li class="page-item"><a class="page-link" href="{{ url_for('listar_usuarios', page=page_num) }}">{{ page_num }}</a></li>
+                    <li class="page-item"><a class="page-link" href="{{ url_for('main.listar_usuarios', page=page_num) }}">{{ page_num }}</a></li>
                     {% endif %}
                 {% else %}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                 {% endif %}
             {% endfor %}
             <li class="page-item {% if not usuarios_paginados.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('listar_usuarios', page=usuarios_paginados.next_num) if usuarios_paginados.has_next else '#'}}">Siguiente &raquo;</a>
+                <a class="page-link" href="{{ url_for('main.listar_usuarios', page=usuarios_paginados.next_num) if usuarios_paginados.has_next else '#'}}">Siguiente &raquo;</a>
             </li>
         </ul>
     </nav>

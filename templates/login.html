@@ -100,7 +100,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('login') }}{{ '?next=' ~ request.args.get('next', '') if request.args.get('next') else '' }}" class="fade-in" novalidate>
+        <form method="POST" action="{{ url_for('main.login') }}{{ '?next=' ~ request.args.get('next', '') if request.args.get('next') else '' }}" class="fade-in" novalidate>
             {{ form.hidden_tag() }}
             <div class="form-group">
                 <div class="input-group input-group-lg">
