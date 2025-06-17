@@ -1,8 +1,10 @@
 #!/bin/bash
 set -e
 
-echo "📦 Haciendo pull de Git..."
-git pull origin master
+echo "📦 Descargando desde GitHub..."
+git fetch origin
+echo "📦 Forzando sincronización..."
+git reset --hard origin/master
 
 echo "📦 Instalando dependencias..."
 pip install -r requirements.txt
