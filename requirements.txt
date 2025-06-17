@@ -15,3 +15,4 @@ google-auth-oauthlib
 
 Flask-Migrate
 psycopg2-binary
+pytz
