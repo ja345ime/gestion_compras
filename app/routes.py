@@ -20,6 +20,8 @@ from . import (
 from .utils import (
     registrar_intento,
     exceso_intentos,
+    admin_required,
+    superadmin_required,
     agregar_producto_al_catalogo,
     obtener_sugerencias_productos,
     enviar_correo,
