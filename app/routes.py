@@ -78,7 +78,7 @@ def login():
             flash("Inicio de sesión como Administrador exitoso.", "success")
             app.logger.info("Usuario 'admin' (virtual) ha iniciado sesión.")
             next_page = request.args.get("next")
-            return redirect(next_page or url_for("index"))
+            return redirect(next_page or url_for("main.index"))
 
         user = Usuario.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):

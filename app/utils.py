@@ -40,7 +40,7 @@ def admin_required(f):
                 "Acceso no autorizado. Se requieren permisos de Administrador.",
                 "danger",
             )
-            return redirect(url_for("index"))
+            return redirect(url_for("main.index"))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -51,7 +51,7 @@ def superadmin_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.superadmin:
             flash("Acceso restringido a superadministradores.", "danger")
-            return redirect(url_for("index"))
+            return redirect(url_for("main.index"))
         return f(*args, **kwargs)
 
     return decorated_function
