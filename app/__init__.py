@@ -91,7 +91,7 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
-    login_manager.login_view = 'login'
+    login_manager.login_view = 'main.login'
     login_manager.login_message = "Por favor, inicie sesión para acceder a esta página."
     login_manager.login_message_category = "info"
     csrf.init_app(app)
@@ -122,7 +122,7 @@ def validar_sesion_activa():
         if token_en_sesion != token_en_usuario:
             logout_user()
             flash('Tu sesión ha expirado o fue iniciada en otro dispositivo.', 'warning')
-            return redirect(url_for('login'))
+            return redirect(url_for('main.login'))
 
 
 # Filtro para convertir saltos de línea en etiquetas <br>
