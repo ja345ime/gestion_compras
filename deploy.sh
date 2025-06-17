@@ -6,6 +6,9 @@ git fetch origin
 echo "📦 Forzando sincronización..."
 git reset --hard origin/master
 
+echo "🔧 Activando entorno virtual..."
+source venv/bin/activate
+
 echo "📦 Instalando dependencias..."
 pip install -r requirements.txt
 
