@@ -73,16 +73,19 @@ def create_app():
     app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
 
 
-    # --- Bloque de logging eliminado ---
-    # if not app.debug:
-    #     handler = RotatingFileHandler(
-    #         os.path.join(BASE_DIR, 'logs', 'error.log'),
-    #         maxBytes=100000,
-    #         backupCount=3,
-    #     )
-    #     handler.setLevel(logging.ERROR)
-    #     app.logger.addHandler(handler)
-    # --- Fin del bloque eliminado ---
+    # Configuración de logging a archivo
+    if not app.debug:
+        try:
+            log_dir = os.environ.get('LOG_PATH', os.path.join(BASE_DIR, 'logs'))
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, 'app.log')
+            handler = RotatingFileHandler(log_file, maxBytes=10240, backupCount=10)
+            handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+            handler.setLevel(logging.INFO)
+            app.logger.addHandler(handler)
+            app.logger.setLevel(logging.INFO)
+        except Exception:
+            app.logger.exception('Error al configurar el logging a archivo.')
 
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
@@ -142,15 +145,6 @@ def nl2br(value):
     escaped = Markup.escape(value)
     return Markup('<br>'.join(escaped.splitlines()))
 
-# Configuración de logs rotativos
-log_dir = os.environ.get('LOG_PATH', os.path.join(BASE_DIR, 'logs'))
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, 'app.log')
-handler = RotatingFileHandler(log_file, maxBytes=10240, backupCount=10)
-handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
-handler.setLevel(logging.INFO)
-app.logger.addHandler(handler)
-app.logger.setLevel(logging.INFO)
 
 
 from .forms import (
