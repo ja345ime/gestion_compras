@@ -14,17 +14,6 @@ from flask import current_app as app, session, redirect, url_for, flash
 from flask_login import current_user
 
 from . import db, login_manager
-from .models import (
-    Rol,
-    Usuario,
-    Departamento,
-    Requisicion,
-    DetalleRequisicion,
-    ProductoCatalogo,
-    IntentoLoginFallido,
-    AuditoriaAcciones,
-    AdminVirtual,
-)
 from .config import ESTADO_INICIAL_REQUISICION, ESTADOS_HISTORICOS
 
 
@@ -85,6 +74,7 @@ def registrar_accion(
     objeto: str | None,
     accion: str,
 ) -> None:
+    from .models import AuditoriaAcciones
     try:
         entrada = AuditoriaAcciones(
             usuario_id=usuario_id,
@@ -100,6 +90,7 @@ def registrar_accion(
 
 
 def registrar_intento(ip: str, username: str | None, exito: bool) -> None:
+    from .models import IntentoLoginFallido
     try:
         intento = IntentoLoginFallido(ip=ip, username=username, exito=exito)
         db.session.add(intento)
@@ -109,6 +100,7 @@ def registrar_intento(ip: str, username: str | None, exito: bool) -> None:
 
 
 def exceso_intentos(ip: str, username: str | None) -> bool:
+    from .models import IntentoLoginFallido
     limite = datetime.now(pytz.UTC) - timedelta(minutes=10)
     fallidos_ip = (
         IntentoLoginFallido.query.filter_by(ip=ip, exito=False)
@@ -130,6 +122,7 @@ def exceso_intentos(ip: str, username: str | None) -> bool:
 
 @login_manager.user_loader
 def load_user(user_id):
+    from .models import AdminVirtual, Usuario
     try:
         if user_id == "0":
             admin = AdminVirtual()
@@ -145,6 +138,7 @@ def load_user(user_id):
 
 
 def crear_datos_iniciales():
+    from .models import Departamento, Rol, Usuario
     with app.app_context():
         departamentos_nombres = [
             "Administración",
@@ -214,6 +208,7 @@ def crear_datos_iniciales():
 
 
 def agregar_producto_al_catalogo(nombre_producto: str):
+    from .models import ProductoCatalogo
     if nombre_producto and nombre_producto.strip():
         nombre_estandarizado = nombre_producto.strip().title()
         producto_existente = ProductoCatalogo.query.filter_by(
@@ -242,6 +237,7 @@ def agregar_producto_al_catalogo(nombre_producto: str):
 
 
 def obtener_sugerencias_productos():
+    from .models import ProductoCatalogo
     try:
         productos = ProductoCatalogo.query.order_by(ProductoCatalogo.nombre).all()
         return [p.nombre for p in productos]
@@ -251,6 +247,7 @@ def obtener_sugerencias_productos():
 
 
 def obtener_emails_por_rol(nombre_rol: str):
+    from .models import Usuario, Rol
     try:
         usuarios = (
             Usuario.query.join(Rol)
@@ -269,6 +266,7 @@ def generar_mensaje_correo(
     estado_actual: str,
     motivo: str = "",
 ) -> str:
+    from .models import Requisicion
     titulo = ""
     cuerpo = ""
 
@@ -440,6 +438,7 @@ def cambiar_estado_requisicion(
     usuario_actual: Usuario | None = None,
     comentario: str | None = None,
 ) -> bool:
+    from .models import Requisicion, Usuario
     requisicion = db.session.get(Requisicion, requisicion_id)
     if not requisicion:
         app.logger.error(f"Requisición {requisicion_id} no encontrada")
@@ -659,6 +658,7 @@ def _crear_pdf_minimo(cabecera, detalles):
 
 
 def generar_pdf_requisicion(requisicion: Requisicion):
+    from .models import Requisicion
     cabecera = [
         ("Requisición", requisicion.numero_requisicion),
         ("Fecha", requisicion.fecha_creacion.strftime("%d/%m/%Y %H:%M")),
@@ -724,6 +724,7 @@ def subir_pdf_a_drive(nombre_archivo: str, ruta_local_pdf: str) -> str | None:
 
 
 def guardar_pdf_requisicion(requisicion: Requisicion):
+    from .models import Requisicion
     pdf_dir = os.path.join(app.static_folder, "pdf")
     os.makedirs(pdf_dir, exist_ok=True)
     path = os.path.join(pdf_dir, f"requisicion_{requisicion.id}.pdf")
@@ -738,6 +739,7 @@ def guardar_pdf_requisicion(requisicion: Requisicion):
 
 
 def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
+    from .models import Requisicion
     fecha_limite = datetime.now(pytz.UTC) - timedelta(days=dias)
     try:
         requisiciones = (
