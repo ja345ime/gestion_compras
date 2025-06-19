@@ -110,7 +110,7 @@ def create_app():
     app.register_blueprint(routes.main)
 
     from .requisiciones import requisiciones_bp
-    app.register_blueprint(requisiciones_bp, url_prefix='/requisiciones')
+    app.register_blueprint(requisiciones_bp)
 
     with app.app_context():
         try:
