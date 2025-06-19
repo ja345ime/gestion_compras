@@ -45,3 +45,6 @@ ESTADOS_HISTORICOS = [
     'Cerrada',
     'Cancelada'
 ]
+
+# Alias conservado para compatibilidad con imports previos
+ESTADOS_HISTORICOS_REQUISICION = ESTADOS_HISTORICOS

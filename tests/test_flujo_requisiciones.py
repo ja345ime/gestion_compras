@@ -3,7 +3,8 @@ from flask import url_for
 from uuid import uuid4
 from unittest.mock import call
 
-from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion
+from app import app as flask_app, db, crear_datos_iniciales
+from app.models import Usuario, Rol, Departamento, Requisicion
 from app.requisiciones.constants import ESTADO_INICIAL_REQUISICION
 from app.utils import cambiar_estado_requisicion
 
@@ -16,7 +17,7 @@ def app(tmp_path):
     )
     with flask_app.app_context():
         db.create_all()
-        crear_datos_iniciales()
+        crear_datos_iniciales(Rol, Departamento, Usuario)
         yield flask_app
         db.session.remove()
         db.drop_all()
@@ -104,7 +105,7 @@ def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
     almacen_user = crear_usuario('almacen_apr', 'Almacen')
     req = crear_requisicion_para(solicitante)
 
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user, None, Usuario, Rol)
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Almacén'
 
@@ -126,7 +127,7 @@ def test_rechazo_por_almacen_envia_motivo(app, mocker):
     req = crear_requisicion_para(solicitante)
 
     cambiar_estado_requisicion(
-        req.id, 'Rechazada por Almacén', almacen_user, 'Falta stock'
+        req.id, 'Rechazada por Almacén', almacen_user, 'Falta stock', Usuario, Rol
     )
     assert enviar.call_count >= 1
     args = enviar.call_args[0]
@@ -141,9 +142,9 @@ def test_aprobacion_por_compras_envia_correo(app, mocker):
     almacen_user = crear_usuario('alm_apr_comp', 'Almacen')
     compras_act = crear_usuario('compras_act', 'Compras')
     req = crear_requisicion_para(solicitante)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user, None, Usuario, Rol)
 
-    cambiar_estado_requisicion(req.id, 'Aprobada por Compras', compras_act)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Compras', compras_act, None, Usuario, Rol)
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Compras'
     assert enviar.call_count >= 1
@@ -156,10 +157,10 @@ def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
     compras_user = crear_usuario('compraspc', 'Compras')
     almacen_user = crear_usuario('alm_pc', 'Almacen')
     req = crear_requisicion_para(solicitante)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user, None, Usuario, Rol)
     enviar.reset_mock()
 
-    cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar', compras_user)
+    cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar', compras_user, None, Usuario, Rol)
     db.session.refresh(req)
     assert req.estado == 'Pendiente de Cotizar'
     assert enviar.call_count >= 1
@@ -173,10 +174,10 @@ def test_cambio_a_comprada_historial(app, client, mocker):
     compras_user = crear_usuario('comprador', 'Compras')
     almacen_user = crear_usuario('alm_hist', 'Almacen')
     req = crear_requisicion_para(solicitante)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
-    cambiar_estado_requisicion(req.id, 'Aprobada por Compras', compras_user)
-    cambiar_estado_requisicion(req.id, 'En Proceso de Compra', compras_user)
-    cambiar_estado_requisicion(req.id, 'Comprada', compras_user)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user, None, Usuario, Rol)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Compras', compras_user, None, Usuario, Rol)
+    cambiar_estado_requisicion(req.id, 'En Proceso de Compra', compras_user, None, Usuario, Rol)
+    cambiar_estado_requisicion(req.id, 'Comprada', compras_user, None, Usuario, Rol)
 
     login(client, 'comprador')
     resp = client.get('/requisiciones/historial')
@@ -208,7 +209,7 @@ def test_visibilidad_requisiciones_por_rol(app, client):
     else:
         print("La requisición ya fue procesada por Almacén y es visible para Compras.")
 
-    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen)
+    cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen, None, Usuario, Rol)
     resp = client.get('/requisiciones')
     assert b'RQTEST' in resp.data
 
