@@ -27,9 +27,6 @@ from .utils import (
 )
 
 from .models import (
-    Rol,
-    Usuario,
-    Departamento,
     # Requisicion, # Moved (mostly)
     # DetalleRequisicion, # Moved
     # ProductoCatalogo, # Moved
@@ -54,6 +51,8 @@ def login():
         return redirect(url_for('main.index'))
     form = LoginForm()
     ip_addr = request.remote_addr
+
+    from .models import Usuario
 
     if form.validate_on_submit():
         if exceso_intentos(ip_addr, form.username.data):
@@ -110,6 +109,8 @@ def logout():
 @login_required
 @admin_required
 def listar_usuarios():
+    from .models import Usuario
+
     page = request.args.get('page', 1, type=int)
     per_page = 10
     usuarios_paginados = db.session.query(Usuario).order_by(Usuario.username).paginate(page=page, per_page=per_page, error_out=False)
@@ -120,6 +121,7 @@ def listar_usuarios():
 @admin_required
 def crear_usuario():
     """Permite a un administrador crear nuevos usuarios."""
+    from .models import Rol, Usuario, Departamento
     form = UserForm()
     roles = Rol.query.all()
     departamentos = Departamento.query.all()
@@ -221,6 +223,8 @@ def crear_usuario():
 @login_required
 @admin_required
 def editar_usuario(usuario_id):
+    from .models import Usuario, Rol, Departamento
+
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.superadmin and not current_user.superadmin:
         flash('No puede editar a un superadministrador.', 'danger')
@@ -294,6 +298,8 @@ def editar_usuario(usuario_id):
 @login_required
 @admin_required
 def confirmar_eliminar_usuario(usuario_id):
+    from .models import Usuario
+
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.id == current_user.id:
         flash('No puede eliminar su propio usuario.', 'danger')
@@ -310,6 +316,8 @@ def confirmar_eliminar_usuario(usuario_id):
 @admin_required
 @superadmin_required
 def eliminar_usuario_post(usuario_id):
+    from .models import Usuario
+
     form = ConfirmarEliminarUsuarioForm()
     usuario = Usuario.query.get_or_404(usuario_id)
     if usuario.id == current_user.id:

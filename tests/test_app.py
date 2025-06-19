@@ -28,7 +28,8 @@ def test_admin_can_change_user_password(client, setup_db, admin_user):
     # Login as admin
     client.post('/login', data={'username': 'admin', 'password': 'admin123'})
 
-    from app import db, Usuario, Rol, Departamento
+    from app import db
+    from app.models import Usuario, Rol, Departamento
 
     with client.application.app_context():
         rol = Rol.query.filter_by(nombre='Solicitante').first()

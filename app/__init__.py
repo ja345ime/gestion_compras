@@ -34,16 +34,6 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-from . import models
-from .models import (
-    Departamento,
-    Requisicion,
-    DetalleRequisicion,
-    ProductoCatalogo,
-    IntentoLoginFallido,
-    AuditoriaAcciones,
-    AdminVirtual,
-)
 from .utils import (
     ensure_session_token_column,
     ensure_ultimo_login_column,
@@ -173,7 +163,8 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         try:
-            crear_datos_iniciales()
+            from .models import Rol, Usuario, Departamento
+            crear_datos_iniciales(Rol, Departamento, Usuario)
         except Exception as e:
             app.logger.warning(f"No se pudieron crear datos iniciales: {e}")
     # Ejecutar con `flask run` o gunicorn
@@ -182,7 +173,8 @@ if __name__ == '__main__':
 @app.cli.command('crear-datos')
 def cli_crear_datos():
     """Crea roles y departamentos iniciales."""
-    crear_datos_iniciales()
+    from .models import Rol, Usuario, Departamento
+    crear_datos_iniciales(Rol, Departamento, Usuario)
     click.echo('Datos iniciales creados.')
 
 
@@ -235,7 +227,8 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         try:
-            crear_datos_iniciales()
+            from .models import Rol, Usuario, Departamento
+            crear_datos_iniciales(Rol, Departamento, Usuario)
         except Exception as e:
             app.logger.warning(f"No se pudieron crear datos iniciales: {e}")
     # Ejecutar con `flask run` o gunicorn
