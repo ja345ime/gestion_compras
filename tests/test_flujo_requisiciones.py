@@ -3,7 +3,9 @@ from flask import url_for
 from uuid import uuid4
 from unittest.mock import call
 
-from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion, ESTADO_INICIAL_REQUISICION, cambiar_estado_requisicion
+from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion
+from app.requisiciones.constants import ESTADO_INICIAL_REQUISICION
+from app.utils import cambiar_estado_requisicion
 
 @pytest.fixture
 def app(tmp_path):
