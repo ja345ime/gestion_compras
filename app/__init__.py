@@ -109,6 +109,9 @@ def create_app():
     from . import routes
     app.register_blueprint(routes.main)
 
+    from .requisiciones import requisiciones_bp
+    app.register_blueprint(requisiciones_bp, url_prefix='/requisiciones')
+
     with app.app_context():
         try:
             ensure_session_token_column()
@@ -151,11 +154,13 @@ from .forms import (
     LoginForm,
     UserForm,
     EditUserForm,
-    DetalleRequisicionForm,
-    RequisicionForm,
-    CambiarEstadoForm,
-    ConfirmarEliminarForm,
     ConfirmarEliminarUsuarioForm,
+)
+from .requisiciones.forms import (
+    RequisicionForm,
+    DetalleRequisicionForm,
+    CambiarEstadoForm,
+    ConfirmarEliminarForm
 )
 
 # --- Modelos ---
