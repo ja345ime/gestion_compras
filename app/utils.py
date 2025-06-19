@@ -14,7 +14,10 @@ from flask import current_app as app, session, redirect, url_for, flash
 from flask_login import current_user
 
 from . import db, login_manager
-from .requisiciones.constants import ESTADO_INICIAL_REQUISICION, ESTADOS_HISTORICOS
+from .requisiciones.constants import (
+    ESTADO_INICIAL_REQUISICION,
+    ESTADOS_HISTORICOS_REQUISICION,
+)
 
 
 def admin_required(f):
@@ -137,8 +140,7 @@ def load_user(user_id):
         return None
 
 
-def crear_datos_iniciales():
-    from .models import Departamento, Rol, Usuario
+def crear_datos_iniciales(Rol, Departamento, Usuario):
     with app.app_context():
         departamentos_nombres = [
             "Administración",
@@ -246,12 +248,11 @@ def obtener_sugerencias_productos():
         return []
 
 
-def obtener_emails_por_rol(nombre_rol: str):
-    from .models import Usuario, Rol
+def obtener_emails_por_rol(nombre_rol: str, UsuarioModel, RolModel):
     try:
         usuarios = (
-            Usuario.query.join(Rol)
-            .filter(Rol.nombre == nombre_rol, Usuario.activo == True)
+            UsuarioModel.query.join(RolModel)
+            .filter(RolModel.nombre == nombre_rol, UsuarioModel.activo == True)
             .all()
         )
         return [u.email for u in usuarios if u.email]
@@ -421,8 +422,10 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
     Thread(target=enviar_correo_api, args=(destinatarios, asunto, mensaje), daemon=True).start()
 
 
-def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
-    destinatarios = obtener_emails_por_rol(nombre_rol)
+def enviar_correos_por_rol(
+    nombre_rol: str, asunto: str, mensaje: str, UsuarioModel, RolModel
+) -> None:
+    destinatarios = obtener_emails_por_rol(nombre_rol, UsuarioModel, RolModel)
     if destinatarios:
         enviar_correo(destinatarios, asunto, mensaje)
         app.logger.info(
@@ -437,6 +440,8 @@ def cambiar_estado_requisicion(
     nuevo_estado: str,
     usuario_actual: Usuario | None = None,
     comentario: str | None = None,
+    UsuarioModel=None,
+    RolModel=None,
 ) -> bool:
     from .models import Requisicion, Usuario
     requisicion = db.session.get(Requisicion, requisicion_id)
@@ -475,7 +480,11 @@ def cambiar_estado_requisicion(
             "Almacén", requisicion, nuevo_estado, comentario or ""
         )
         enviar_correos_por_rol(
-            "Almacen", "Nueva requisición pendiente", mensaje_almacen
+            "Almacen",
+            "Nueva requisición pendiente",
+            mensaje_almacen,
+            UsuarioModel,
+            RolModel,
         )
         app.logger.info(
             f"Correo enviado al rol Almacen por requisición #{requisicion.id}"
@@ -486,7 +495,11 @@ def cambiar_estado_requisicion(
             "Compras", requisicion, nuevo_estado, comentario or ""
         )
         enviar_correos_por_rol(
-            "Compras", "Requisición enviada por Almacén", mensaje_compras
+            "Compras",
+            "Requisición enviada por Almacén",
+            mensaje_compras,
+            UsuarioModel,
+            RolModel,
         )
         app.logger.info(
             f"Correo enviado al rol Compras por requisición #{requisicion.id}"
@@ -497,7 +510,11 @@ def cambiar_estado_requisicion(
             "Compras", requisicion, nuevo_estado, comentario or ""
         )
         enviar_correos_por_rol(
-            "Compras", "Requisición pendiente por cotizar", mensaje_compras
+            "Compras",
+            "Requisición pendiente por cotizar",
+            mensaje_compras,
+            UsuarioModel,
+            RolModel,
         )
         app.logger.info(
             f"Correo enviado al rol Compras (pendiente por cotizar) por requisición #{requisicion.id}"
@@ -744,7 +761,7 @@ def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) 
     try:
         requisiciones = (
             Requisicion.query
-            .filter(Requisicion.estado.in_(ESTADOS_HISTORICOS))
+            .filter(Requisicion.estado.in_(ESTADOS_HISTORICOS_REQUISICION))
             .filter(Requisicion.fecha_creacion < fecha_limite)
             .all()
         )
