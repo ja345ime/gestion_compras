@@ -5,7 +5,8 @@ from uuid import uuid4
 # Configurar password de administrador para pruebas
 os.environ.setdefault("ADMIN_PASSWORD", "admin123")
 
-from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion
+from app import app as flask_app, db, crear_datos_iniciales
+from app.models import Usuario, Rol, Departamento, Requisicion
 
 
 def crear_usuario(username: str, rol_nombre: str, password: str = "test") -> Usuario:
@@ -38,7 +39,7 @@ def app():
     )
     with flask_app.app_context():
         db.create_all()
-        crear_datos_iniciales()
+        crear_datos_iniciales(Rol, Departamento, Usuario)
     yield flask_app
     with flask_app.app_context():
         db.session.remove()
@@ -55,7 +56,7 @@ def setup_db(app):
     """Crea y limpia la base de datos para cada prueba."""
     with app.app_context():
         db.create_all()
-        crear_datos_iniciales()
+        crear_datos_iniciales(Rol, Departamento, Usuario)
         yield
         db.session.remove()
         db.drop_all()

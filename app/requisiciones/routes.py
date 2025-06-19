@@ -30,9 +30,7 @@ from ..utils import (
 from ..models import (
     Requisicion,
     DetalleRequisicion,
-    Departamento,
-    ProductoCatalogo, # Used by agregar_producto_al_catalogo
-    Usuario # For current_user details and creator link
+    ProductoCatalogo,  # Used by agregar_producto_al_catalogo
 )
 from .forms import (
     RequisicionForm,
@@ -45,6 +43,8 @@ from . import requisiciones_bp
 @requisiciones_bp.route('/crear', methods=['GET', 'POST'])
 @login_required
 def crear_requisicion():
+    from ..models import Departamento, Usuario
+
     form = RequisicionForm()
     departamentos = Departamento.query.order_by(Departamento.nombre).all()
     form.departamento_nombre.choices = [('', 'Seleccione un departamento...')] + [
@@ -113,8 +113,9 @@ def crear_requisicion():
                 enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
 
                 if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
+                    from ..models import Rol
                     mensaje_almacen = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado, "")
-                    enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
+                    enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen, Usuario, Rol)
 
                 guardar_pdf_requisicion(nueva_requisicion)
             except Exception as e:
@@ -263,6 +264,8 @@ def historial_requisiciones():
 @requisiciones_bp.route('/<int:requisicion_id>', methods=['GET', 'POST'])
 @login_required
 def ver_requisicion(requisicion_id):
+    from ..models import Usuario
+
     try:
         requisicion = Requisicion.query.get(requisicion_id)
     except Exception as e:
@@ -378,8 +381,14 @@ def ver_requisicion(requisicion_id):
             if nuevo_estado in ['Rechazada por Almacén', 'Rechazada por Compras', 'Cancelada'] and not comentario_ingresado_texto:
                 flash('Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.', 'warning')
 
+            from ..models import Rol
             if cambiar_estado_requisicion(
-                requisicion.id, nuevo_estado, current_user, comentario_ingresado_texto
+                requisicion.id,
+                nuevo_estado,
+                current_user,
+                comentario_ingresado_texto,
+                Usuario,
+                Rol,
             ):
                 flash_message = f'El estado de la requisición {requisicion.numero_requisicion} ha sido actualizado a "{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}".'
                 if comentario_ingresado_texto:
@@ -441,6 +450,8 @@ def ver_requisicion(requisicion_id):
 @requisiciones_bp.route('/<int:requisicion_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_requisicion(requisicion_id):
+    from ..models import Departamento
+
     try:
         requisicion_a_editar = Requisicion.query.get(requisicion_id)
     except Exception as e:

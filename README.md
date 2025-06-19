@@ -94,9 +94,10 @@ utilizando un dominio o una IP interna como `http://192.168.x.x/`.
 
 ```python
 from app import db, crear_datos_iniciales, app
+from app.models import Usuario, Rol, Departamento
 with app.app_context():
     db.create_all()
-   crear_datos_iniciales()
+    crear_datos_iniciales(Rol, Departamento, Usuario)
 ```
 
 ### Respaldos automáticos
