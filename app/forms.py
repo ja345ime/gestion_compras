@@ -5,7 +5,6 @@ from wtforms import (
 )
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
 
-from .models import Rol, Departamento
 from flask import current_app
 
 
@@ -38,6 +37,7 @@ class UserForm(FlaskForm):
     submit = SubmitField('Guardar Usuario')
 
     def __init__(self, *args, **kwargs):
+        from .models import Rol, Departamento
         super(UserForm, self).__init__(*args, **kwargs)
         try:
             roles_query = Rol.query.order_by(Rol.nombre).all()
