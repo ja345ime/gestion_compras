@@ -14,7 +14,7 @@ from flask import current_app as app, session, redirect, url_for, flash
 from flask_login import current_user
 
 from . import db, login_manager
-from .config import ESTADO_INICIAL_REQUISICION, ESTADOS_HISTORICOS
+from .requisiciones.constants import ESTADO_INICIAL_REQUISICION, ESTADOS_HISTORICOS
 
 
 def admin_required(f):

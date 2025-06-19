@@ -36,8 +36,6 @@ login_manager = LoginManager()
 csrf = CSRFProtect()
 from . import models
 from .models import (
-    Rol,
-    Usuario,
     Departamento,
     Requisicion,
     DetalleRequisicion,
@@ -191,6 +189,7 @@ def cli_crear_datos():
 @app.cli.command('crear-admin')
 @click.option('--password', default=None, help='Contraseña para el usuario admin')
 def cli_crear_admin(password):
+    from .models import Rol, Usuario
     """Crea o actualiza el usuario administrador."""
     rol = Rol.query.filter_by(nombre='Superadmin').first()
     if not rol:
