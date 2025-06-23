@@ -14,19 +14,7 @@ from .constants import (
     UNIDADES_DE_MEDIDA_SUGERENCIAS,
     TIEMPO_LIMITE_EDICION_REQUISICION
 )
-from app.utils import (
-    admin_required, # For limpiar_requisiciones_viejas_route
-    agregar_producto_al_catalogo,
-    obtener_sugerencias_productos,
-    enviar_correo,
-    enviar_correos_por_rol,
-    generar_mensaje_correo,
-    cambiar_estado_requisicion,
-    guardar_pdf_requisicion,
-    limpiar_requisiciones_viejas,
-    generar_pdf_requisicion,
-    registrar_accion
-)
+import app.utils as utils
 from ..models import (
     Requisicion,
     DetalleRequisicion,
@@ -66,7 +54,7 @@ def crear_requisicion():
             departamento_seleccionado = Departamento.query.filter_by(nombre=form.departamento_nombre.data).first()
             if not departamento_seleccionado:
                 flash('Error: El departamento seleccionado no es válido.', 'danger')
-                productos_sugerencias = obtener_sugerencias_productos()
+                productos_sugerencias = utils.obtener_sugerencias_productos()
                 return render_template(
                     'requisiciones/crear_requisicion.html', # Changed template path
                     form=form,
@@ -100,7 +88,7 @@ def crear_requisicion():
                         unidad_medida=detalle_data['unidad_medida']
                     )
                     db.session.add(detalle)
-                    agregar_producto_al_catalogo(nombre_producto_estandarizado)
+                    utils.agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
         except Exception as e:
@@ -109,22 +97,22 @@ def crear_requisicion():
             app.logger.error(f"Error en crear_requisicion: {e}", exc_info=True)
         else:
             try:
-                mensaje = generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado, "")
-                enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
+                mensaje = utils.generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado, "")
+                utils.enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
 
                 if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
                     from ..models import Rol
-                    mensaje_almacen = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado, "")
-                    enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen, Usuario, Rol)
+                    mensaje_almacen = utils.generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado, "")
+                    utils.enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen, Usuario, Rol)
 
-                guardar_pdf_requisicion(nueva_requisicion)
+                utils.guardar_pdf_requisicion(nueva_requisicion)
             except Exception as e:
                 app.logger.error(f"Error tras crear requisición {nueva_requisicion.id}: {e}", exc_info=True)
 
             flash('¡Requisición creada con éxito! Número: ' + nueva_requisicion.numero_requisicion, 'success')
             return redirect(url_for('requisiciones.requisicion_creada', requisicion_id=nueva_requisicion.id)) # Changed blueprint name
 
-    productos_sugerencias = obtener_sugerencias_productos()
+    productos_sugerencias = utils.obtener_sugerencias_productos()
     return render_template(
         'requisiciones/crear_requisicion.html', # Changed template path
         form=form,
@@ -382,7 +370,7 @@ def ver_requisicion(requisicion_id):
                 flash('Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.', 'warning')
 
             from ..models import Rol
-            if cambiar_estado_requisicion(
+            if utils.cambiar_estado_requisicion(
                 requisicion.id,
                 nuevo_estado,
                 current_user,
@@ -502,7 +490,7 @@ def editar_requisicion(requisicion_id):
             departamento_seleccionado = Departamento.query.filter_by(nombre=form.departamento_nombre.data).first()
             if not departamento_seleccionado:
                 flash('Departamento seleccionado no válido.', 'danger')
-                productos_sugerencias = obtener_sugerencias_productos()
+                productos_sugerencias = utils.obtener_sugerencias_productos()
                 return render_template('requisiciones/editar_requisicion.html', form=form, title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}", requisicion_id=requisicion_a_editar.id, unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS, productos_sugerencias=productos_sugerencias) # Changed template path
 
             requisicion_a_editar.departamento_id = departamento_seleccionado.id
@@ -526,7 +514,7 @@ def editar_requisicion(requisicion_id):
                         unidad_medida=unidad_medida
                     )
                     db.session.add(nuevo_detalle)
-                    agregar_producto_al_catalogo(nombre_producto_estandarizado)
+                    utils.agregar_producto_al_catalogo(nombre_producto_estandarizado)
             db.session.commit()
             flash(f'Requisición {requisicion_a_editar.numero_requisicion} actualizada con éxito.', 'success')
             return redirect(url_for('requisiciones.ver_requisicion', requisicion_id=requisicion_a_editar.id)) # Changed blueprint name
@@ -535,7 +523,7 @@ def editar_requisicion(requisicion_id):
             app.logger.error(f"Error al editar requisición: {str(e)}", exc_info=True)
             abort(500)
 
-    productos_sugerencias = obtener_sugerencias_productos()
+    productos_sugerencias = utils.obtener_sugerencias_productos()
     return render_template('requisiciones/editar_requisicion.html', form=form, title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}", # Changed template path
                            requisicion_id=requisicion_a_editar.id,
                            unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
@@ -585,7 +573,7 @@ def eliminar_requisicion_post(requisicion_id):
     try:
         db.session.delete(requisicion_a_eliminar)
         db.session.commit()
-        registrar_accion(current_user.id, 'Requisiciones', requisicion_a_eliminar.numero_requisicion, 'eliminar')
+        utils.registrar_accion(current_user.id, 'Requisiciones', requisicion_a_eliminar.numero_requisicion, 'eliminar')
         flash(f'Requisicion {requisicion_a_eliminar.numero_requisicion} eliminada con éxito.', 'success')
     except Exception as e:
         db.session.rollback()
@@ -662,7 +650,7 @@ def listar_por_estado(estado):
 def imprimir_requisicion(requisicion_id):
     requisicion = Requisicion.query.get_or_404(requisicion_id)
     # Add permission check if necessary, e.g., only creator or admin/compras/almacen can print
-    pdf_data = generar_pdf_requisicion(requisicion)
+    pdf_data = utils.generar_pdf_requisicion(requisicion)
     nombre = f"requisicion_{requisicion.numero_requisicion}.pdf"
     resp = make_response(pdf_data)
     resp.headers['Content-Type'] = 'application/pdf'
@@ -671,10 +659,10 @@ def imprimir_requisicion(requisicion_id):
 
 @requisiciones_bp.route('/admin/limpiar_requisiciones_viejas') # Path is now /requisiciones/admin/limpiar_requisiciones_viejas
 @login_required
-@admin_required # Make sure admin_required is imported from ..utils
+@utils.admin_required # Make sure admin_required is imported from ..utils
 def limpiar_requisiciones_viejas_route():
     """Limpia requisiciones finalizadas antiguas."""
     dias = request.args.get('dias', 15, type=int)
-    eliminadas = limpiar_requisiciones_viejas(dias, guardar_mensaje=True) # limpiar_requisiciones_viejas from ..utils
+    eliminadas = utils.limpiar_requisiciones_viejas(dias, guardar_mensaje=True) # limpiar_requisiciones_viejas from ..utils
     flash(f'Se eliminaron {eliminadas} requisiciones antiguas.', 'success')
     return redirect(url_for('requisiciones.historial_requisiciones')) # Redirect to new blueprint path
