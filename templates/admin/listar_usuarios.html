@@ -40,8 +40,28 @@
                         {% endif %}
                     </td>
                     <td>
-                        {# Aquí podrías añadir botones para editar o cambiar estado de activación en el futuro #}
-                        <a href="{{ url_for('main.editar_usuario', usuario_id=usuario.id) }}" class="btn btn-sm btn-azul" title="Editar"><i class="fas fa-edit"></i></a>
+                        {# Edit button #}
+                        {% if current_user.superadmin or not usuario.superadmin %}
+                            <a href="{{ url_for('main.editar_usuario', usuario_id=usuario.id) }}" class="btn btn-sm btn-azul" title="Editar"><i class="fas fa-edit"></i></a>
+                        {% else %}
+                            <button class="btn btn-sm btn-outline-secondary" disabled title="No puede editar Super Admins"><i class="fas fa-edit"></i></button>
+                        {% endif %}
+
+                        {# Delete button #}
+                        {% if current_user.id != usuario.id %} {# Cannot delete self #}
+                            {% set target_is_sa = usuario.superadmin %}
+                            {% set target_is_admin = usuario.rol_asignado and usuario.rol_asignado.nombre == 'Admin' %}
+
+                            {% if current_user.superadmin %} {# Super Admin can delete anyone (except self) #}
+                                <a href="{{ url_for('main.confirmar_eliminar_usuario', usuario_id=usuario.id) }}" class="btn btn-sm btn-danger" title="Eliminar"><i class="fas fa-trash-alt"></i></a>
+                            {% elif not target_is_sa and not target_is_admin %} {# Admin can delete non-SA and non-Admin users #}
+                                <a href="{{ url_for('main.confirmar_eliminar_usuario', usuario_id=usuario.id) }}" class="btn btn-sm btn-danger" title="Eliminar"><i class="fas fa-trash-alt"></i></a>
+                            {% else %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled title="No tiene permisos para eliminar este usuario"><i class="fas fa-trash-alt"></i></button>
+                            {% endif %}
+                        {% else %}
+                             <button class="btn btn-sm btn-outline-secondary" disabled title="No puede eliminarse a sí mismo"><i class="fas fa-trash-alt"></i></button>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
