@@ -14,7 +14,7 @@ from .constants import (
     UNIDADES_DE_MEDIDA_SUGERENCIAS,
     TIEMPO_LIMITE_EDICION_REQUISICION
 )
-from ..utils import (
+from app.utils import (
     admin_required, # For limpiar_requisiciones_viejas_route
     agregar_producto_al_catalogo,
     obtener_sugerencias_productos,
