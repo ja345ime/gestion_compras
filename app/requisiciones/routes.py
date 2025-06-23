@@ -58,12 +58,13 @@ def crear_requisicion():
                 flash('Error: El departamento seleccionado no es válido.', 'danger')
                 productos_sugerencias = utils.obtener_sugerencias_productos()
                 return render_template(
-                    'requisiciones/crear_requisicion.html', # Changed template path
+                    'requisiciones/crear_requisicion.html',  # Changed template path
                     form=form,
                     departamentos=departamentos,
                     title="Crear Nueva Requisición",
                     unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
                     productos_sugerencias=productos_sugerencias,
+                    vista_actual='crear'
                 )
 
             nueva_requisicion = Requisicion(
@@ -116,12 +117,13 @@ def crear_requisicion():
 
     productos_sugerencias = utils.obtener_sugerencias_productos()
     return render_template(
-        'requisiciones/crear_requisicion.html', # Changed template path
+        'requisiciones/crear_requisicion.html',  # Changed template path
         form=form,
         departamentos=departamentos,
         title="Crear Nueva Requisición",
         unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
         productos_sugerencias=productos_sugerencias,
+        vista_actual='crear'
     )
 
 @requisiciones_bp.route('/<int:requisicion_id>/creada')
@@ -129,7 +131,7 @@ def crear_requisicion():
 def requisicion_creada(requisicion_id):
     requisicion = Requisicion.query.get_or_404(requisicion_id)
     # Assuming 'requisicion_creada.html' is specific to requisiciones, keep it in 'templates/requisiciones/'
-    return render_template('requisiciones/requisicion_creada.html', requisicion=requisicion, title='Requisición Creada')
+    return render_template('requisiciones/requisicion_creada.html', requisicion=requisicion, title='Requisición Creada', vista_actual='creada')
 
 
 @requisiciones_bp.route('/') # Path changed to be the root of the blueprint
@@ -435,6 +437,7 @@ def ver_requisicion(requisicion_id):
         ),
         form_estado=form_estado,
         puede_cambiar_estado=puede_cambiar_estado,
+        vista_actual='detalle'
     )
 
 @requisiciones_bp.route('/<int:requisicion_id>/editar', methods=['GET', 'POST'])
@@ -493,7 +496,13 @@ def editar_requisicion(requisicion_id):
             if not departamento_seleccionado:
                 flash('Departamento seleccionado no válido.', 'danger')
                 productos_sugerencias = utils.obtener_sugerencias_productos()
-                return render_template('requisiciones/editar_requisicion.html', form=form, title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}", requisicion_id=requisicion_a_editar.id, unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS, productos_sugerencias=productos_sugerencias) # Changed template path
+                return render_template('requisiciones/editar_requisicion.html',
+                                      form=form,
+                                      title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}",
+                                      requisicion_id=requisicion_a_editar.id,
+                                      unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
+                                      productos_sugerencias=productos_sugerencias,
+                                      vista_actual='editar')  # Changed template path
 
             requisicion_a_editar.departamento_id = departamento_seleccionado.id
             requisicion_a_editar.prioridad = form.prioridad.data
@@ -526,10 +535,13 @@ def editar_requisicion(requisicion_id):
             abort(500)
 
     productos_sugerencias = utils.obtener_sugerencias_productos()
-    return render_template('requisiciones/editar_requisicion.html', form=form, title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}", # Changed template path
+    return render_template('requisiciones/editar_requisicion.html',
+                           form=form,
+                           title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}",  # Changed template path
                            requisicion_id=requisicion_a_editar.id,
                            unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
-                           productos_sugerencias=productos_sugerencias)
+                           productos_sugerencias=productos_sugerencias,
+                           vista_actual='editar')
 
 @requisiciones_bp.route('/<int:requisicion_id>/confirmar_eliminar')
 @login_required
@@ -551,7 +563,8 @@ def confirmar_eliminar_requisicion(requisicion_id):
     return render_template('requisiciones/confirmar_eliminar_requisicion.html',
                            requisicion=requisicion,
                            form=form,
-                           title=f"Confirmar Eliminación: {requisicion.numero_requisicion}")
+                           title=f"Confirmar Eliminación: {requisicion.numero_requisicion}",
+                           vista_actual='confirmar_eliminar')
 
 @requisiciones_bp.route('/<int:requisicion_id>/eliminar', methods=['POST'])
 @login_required
