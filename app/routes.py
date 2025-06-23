@@ -123,18 +123,53 @@ def crear_usuario():
     """Permite a un administrador crear nuevos usuarios."""
     from .models import Rol, Usuario, Departamento
     form = UserForm()
-    roles = Rol.query.all()
-    departamentos = Departamento.query.all()
+    all_roles = Rol.query.order_by(Rol.nombre).all()
+    all_departamentos = Departamento.query.order_by(Departamento.nombre).all()
 
-    if not current_user.superadmin:
-        roles = [r for r in roles if r.nombre != 'Superadmin']
-        if current_user.departamento_id:
-            departamentos = [current_user.departamento_asignado]
+    if current_user.superadmin:
+        roles_for_form = all_roles
+        departamentos_for_form = all_departamentos
+    else: # current_user is Admin (not Super Admin)
+        roles_for_form = [r for r in all_roles if r.nombre not in ['Admin', 'Super Admin']]
+        if current_user.departamento_id: # Admin might be restricted to their department
+            departamentos_for_form = [current_user.departamento_asignado] if current_user.departamento_asignado else [] # Ensure it's a list
+            # If admin is not assigned a department, can they assign any? Or none?
+            # For now, let's assume they can see all departments if not restricted to one.
+            # This part of departments was not in the requirements, keeping original logic if admin has dept.
+        else:
+            departamentos_for_form = all_departamentos
 
-    form.rol_id.choices = [(r.id, r.nombre) for r in roles]
+
+    form.rol_id.choices = [(r.id, r.nombre) for r in roles_for_form]
+    # Populate form.departamento_id.choices based on departamentos_for_form
+    # The original code filtered `departamentos` variable, then used it for choices.
+    # Let's ensure `departamentos` (used in template context) and `form.departamento_id.choices` are consistent.
+    # The original code for departments for non-superadmin:
+    # if current_user.departamento_id:
+    # departamentos = [current_user.departamento_asignado]
+    # This seems to be about restricting which departments an Admin can assign a user to,
+    # not directly related to Super Admin role restrictions. I will keep this department logic as is for now.
+    # The variable `departamentos` is passed to the template.
+    # The `form.departamento_id.choices` should be based on `departamentos_for_form` if that's intended.
+    # Original: form.departamento_id.choices = [('0', 'Ninguno (Opcional)')] + [(str(d.id), d.nombre) for d in departamentos]
+    # `departamentos` in this line refers to the filtered list if user is not SA and has a dept.
+
+    _departments_for_choices = all_departamentos # Default to all
+    if not current_user.superadmin and current_user.departamento_id and current_user.departamento_asignado:
+        _departments_for_choices = [current_user.departamento_asignado]
+
     form.departamento_id.choices = [('0', 'Ninguno (Opcional)')] + [
-        (str(d.id), d.nombre) for d in departamentos
+        (str(d.id), d.nombre) for d in _departments_for_choices
     ]
+    # The template context `departamentos` should be `all_departamentos` or the filtered list.
+    # The variable passed to render_template as `departamentos` is `departamentos`. Let's align.
+    # This is confusing. Let's simplify the `departamentos` variable for the template.
+    # The critical part is `form.rol_id.choices`.
+
+    # For template context, pass `all_departamentos` or the filtered list.
+    # Original code passes `departamentos` which is `all_departamentos` or `[current_user.departamento_asignado]`
+    # This seems fine.
+
     if form.validate_on_submit():
         try:
             existing_user_username = Usuario.query.filter_by(username=form.username.data).first()
@@ -168,11 +203,21 @@ def crear_usuario():
                         final_departamento_id = None
 
                 rol_asignado = db.session.get(Rol, form.rol_id.data)
-                if rol_asignado and rol_asignado.nombre in ['Admin', 'Superadmin'] and not current_user.superadmin:
-                    flash('Solo un superadministrador puede asignar los roles Admin o Superadmin.', 'danger')
-                    return redirect(url_for('main.listar_usuarios'))
+                # Security check: was this role part of the allowed choices?
+                # roles_for_form was used to set form.rol_id.choices
+                allowed_role_ids = [r.id for r in roles_for_form]
+                if not rol_asignado or rol_asignado.id not in allowed_role_ids:
+                    flash('Rol seleccionado no válido o no permitido.', 'danger')
+                    error_occurred = True
+                # Explicit check for Admin/Super Admin assignment by non-SA
+                elif rol_asignado.nombre in ['Admin', 'Super Admin'] and not current_user.superadmin:
+                    flash('Solo un Super Admin puede asignar los roles "Admin" o "Super Admin".', 'danger')
+                    error_occurred = True
 
-                superadmin_flag = rol_asignado.nombre == 'Superadmin'
+            # Proceed only if no errors regarding roles or other user data
+            if not error_occurred:
+                # This 'superadmin_flag' will determine the boolean field on the User model
+                superadmin_flag = rol_asignado.nombre == 'Super Admin' # Use space "Super Admin"
 
                 nuevo_usuario = Usuario(
                     username=form.username.data,
@@ -213,8 +258,8 @@ def crear_usuario():
     return render_template(
         'admin/crear_usuario.html',
         form=form,
-        roles=roles,
-        departamentos=departamentos,
+        roles=all_roles, # Use all_roles for template context if needed for display
+        departamentos=all_departamentos, # Use all_departamentos for template context
         title="Crear Nuevo Usuario"
     )
 
@@ -262,10 +307,32 @@ def editar_usuario(usuario_id):
                 usuario.cedula = form.cedula.data
                 usuario.nombre_completo = form.nombre_completo.data
                 usuario.email = form.email.data if form.email.data else None
-                if current_user.superadmin:
-                    usuario.rol_id = form.rol_id.data
-                    nuevo_rol = db.session.get(Rol, form.rol_id.data)
-                    usuario.superadmin = nuevo_rol.nombre == 'Superadmin'
+                if current_user.superadmin: # Only Super Admin can change the role
+                    nuevo_rol_id = form.rol_id.data
+                    # Check if rol_id is actually changing, and if new role is valid
+                    if usuario.rol_id != nuevo_rol_id:
+                        nuevo_rol_obj = db.session.get(Rol, nuevo_rol_id)
+                        if nuevo_rol_obj:
+                            usuario.rol_id = nuevo_rol_obj.id
+                            usuario.superadmin = (nuevo_rol_obj.nombre == 'Super Admin') # Use space
+                        else:
+                            # This case should ideally be caught by form validation if choices were restricted
+                            flash("Rol seleccionado para cambio no es válido.", "danger")
+                            # Decide if this is a hard error or just ignore role change
+                            # For now, let's assume form validation or dropdown handles valid choices
+                            # and if it gets here with an invalid new_rol_id, it's an issue.
+                            # However, to prevent crash, we might just not change the role.
+                            # Sticking to original logic: if SA, they can change it.
+                            # The form should provide valid rol_ids.
+                            pass # Or log an error
+                    # If rol_id is not changing, but SA is editing, ensure superadmin flag is consistent if somehow it diverged.
+                    # This is unlikely if only SA can change roles.
+                    elif usuario.rol_asignado.nombre == 'Super Admin' and not usuario.superadmin:
+                         usuario.superadmin = True
+                    elif usuario.rol_asignado.nombre != 'Super Admin' and usuario.superadmin:
+                         usuario.superadmin = False
+
+
                 depto_str = form.departamento_id.data
                 usuario.departamento_id = int(depto_str) if depto_str and depto_str != '0' else None
                 usuario.activo = form.activo.data
@@ -313,24 +380,42 @@ def confirmar_eliminar_usuario(usuario_id):
 
 @main.route('/admin/usuarios/<int:usuario_id>/eliminar', methods=['POST'])
 @login_required
-@admin_required
-@superadmin_required
+@admin_required # Keep basic admin requirement
+# @superadmin_required # Remove this, add logic inside
 def eliminar_usuario_post(usuario_id):
     from .models import Usuario
 
-    form = ConfirmarEliminarUsuarioForm()
-    usuario = Usuario.query.get_or_404(usuario_id)
-    if usuario.id == current_user.id:
+    form = ConfirmarEliminarUsuarioForm() # For CSRF token validation primarily
+    usuario_a_eliminar = Usuario.query.get_or_404(usuario_id)
+
+    if usuario_a_eliminar.id == current_user.id:
         flash('No puede eliminar su propio usuario.', 'danger')
-        return redirect(url_for('main.editar_usuario', usuario_id=usuario_id))
-    if not form.validate_on_submit():
+        return redirect(url_for('main.listar_usuarios')) # Or main.editar_usuario
+
+    # Permission check:
+    # Only Super Admin can delete Super Admins or Admins.
+    # Admin can delete users with other roles.
+    is_target_sa_or_admin = usuario_a_eliminar.superadmin or \
+                            (usuario_a_eliminar.rol_asignado and usuario_a_eliminar.rol_asignado.nombre == 'Admin')
+
+    if is_target_sa_or_admin and not current_user.superadmin:
+        if usuario_a_eliminar.superadmin:
+            flash('Solo un Super Admin puede eliminar a otro Super Admin.', 'danger')
+        else: # Target is Admin
+            flash('Solo un Super Admin puede eliminar a un Admin.', 'danger')
+        return redirect(url_for('main.listar_usuarios'))
+
+    if not form.validate_on_submit(): # Check CSRF etc. after permission checks
         flash('Petición inválida.', 'danger')
         return redirect(url_for('main.confirmar_eliminar_usuario', usuario_id=usuario_id))
+
     try:
-        db.session.delete(usuario)
+        # Store username before deleting, in case it's needed and object becomes inaccessible
+        username_eliminado = usuario_a_eliminar.username
+        db.session.delete(usuario_a_eliminar)
         db.session.commit()
-        registrar_accion(current_user.id, 'Usuarios', usuario.username, 'eliminar')
-        flash(f'Usuario {usuario.username} eliminado con éxito.', 'success')
+        registrar_accion(current_user.id, 'Usuarios', username_eliminado, 'eliminar')
+        flash(f'Usuario {username_eliminado} eliminado con éxito.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar el usuario: {str(e)}', 'danger')
