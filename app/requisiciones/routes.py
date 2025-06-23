@@ -14,6 +14,8 @@ from .constants import (
     UNIDADES_DE_MEDIDA_SUGERENCIAS,
     TIEMPO_LIMITE_EDICION_REQUISICION
 )
+
+from app.decorators import admin_required
 import app.utils as utils
 from ..models import (
     Requisicion,
@@ -659,7 +661,7 @@ def imprimir_requisicion(requisicion_id):
 
 @requisiciones_bp.route('/admin/limpiar_requisiciones_viejas') # Path is now /requisiciones/admin/limpiar_requisiciones_viejas
 @login_required
-@utils.admin_required # Make sure admin_required is imported from ..utils
+@admin_required
 def limpiar_requisiciones_viejas_route():
     """Limpia requisiciones finalizadas antiguas."""
     dias = request.args.get('dias', 15, type=int)
