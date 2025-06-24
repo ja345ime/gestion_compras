@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from app import db
 from app.models import Requisicion, Usuario
 from app import limpiar_requisiciones_viejas
+from app import generar_pdf_requisicion
 
 
 def crear_requisicion(usuario, estado, dias_ago, url=None):
@@ -23,6 +24,15 @@ def crear_requisicion(usuario, estado, dias_ago, url=None):
     db.session.add(req)
     db.session.commit()
     return req
+
+
+def test_generar_pdf_requisicion_genera_pdf_valido(app):
+    with app.app_context():
+        admin = Usuario.query.filter_by(username='admin').first()
+        req = crear_requisicion(admin, 'Pendiente de Revisión Almacén', 0)
+        pdf_bytes = generar_pdf_requisicion(req)
+        assert pdf_bytes[:4] == b'%PDF'
+        assert req.numero_requisicion.encode('latin-1') in pdf_bytes
 
 
 def test_limpiar_elimina_historicas_y_sube_pdf(app, mocker):
