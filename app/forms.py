@@ -3,7 +3,7 @@ from wtforms import (
     StringField, SelectField, TextAreaField, SubmitField,
     DecimalField, FieldList, FormField, PasswordField, BooleanField
 )
-from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp
+from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp, NumberRange
 
 from .models import Rol, Departamento
 from flask import current_app
@@ -74,10 +74,16 @@ class DetalleRequisicionForm(FlaskForm):
         validators=[DataRequired(), Length(max=250)],
         render_kw={"placeholder": "Escriba o seleccione..."}
     )
-    cantidad = DecimalField('Cantidad', validators=[DataRequired()])
+    cantidad = DecimalField(
+        'Cantidad',
+        validators=[
+            DataRequired(message="La cantidad es obligatoria."),
+            NumberRange(min=0.01, message="La cantidad debe ser un número positivo.")
+        ]
+    )
     unidad_medida = StringField(
         'Unidad de Medida',
-        validators=[DataRequired(), Length(max=100)],
+        validators=[DataRequired(message="La unidad de medida es obligatoria."), Length(max=100)],
         render_kw={"placeholder": "Escriba para buscar..."}
     )
 
