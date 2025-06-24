@@ -76,6 +76,7 @@ def crear_requisicion_para(usuario: Usuario):
 
 def test_creacion_requisicion_envia_correos(client, mocker):
     enviar = mocker.patch('app.enviar_correo')
+    almacen_user = crear_usuario('alm_test', 'Almacen')
     solicitante = crear_usuario('solicitante', 'Solicitante')
     login(client, 'solicitante')
 
@@ -93,9 +94,10 @@ def test_creacion_requisicion_envia_correos(client, mocker):
 
     response = client.post('/requisiciones/crear', data=data, follow_redirects=True)
     assert response.status_code == 200
-    # correo al solicitante y a Almacén
-    assert enviar.call_count >= 1
-    print("Correos enviados (creación):", enviar.call_args_list)
+    assert enviar.call_count == 2
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(solicitante.email in dest for dest in destinatarios_list)
+    assert any(almacen_user.email in dest for dest in destinatarios_list)
 
 
 def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
@@ -109,15 +111,10 @@ def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Almacén'
 
-    # Mostrar a quiénes se envió
-    print(enviar.call_args_list)
-
-    # Al menos un correo debe enviarse
-    assert enviar.call_count >= 1
-
-    # Si existe usuario de Compras, uno de los correos debe incluirlo
+    assert enviar.call_count == 2
     destinatarios_list = [call.args[0] for call in enviar.call_args_list]
     assert any(compras_user.email in dest for dest in destinatarios_list)
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_rechazo_por_almacen_envia_motivo(app, mocker):
@@ -133,7 +130,8 @@ def test_rechazo_por_almacen_envia_motivo(app, mocker):
     args = enviar.call_args[0]
     html = args[2].lower()
     assert 'falta stock' in html
-    print("Contenido HTML:", html)
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_aprobacion_por_compras_envia_correo(app, mocker):
@@ -148,7 +146,8 @@ def test_aprobacion_por_compras_envia_correo(app, mocker):
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Compras'
     assert enviar.call_count >= 1
-    print("Correos enviados (compras):", enviar.call_args_list)
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
@@ -163,9 +162,10 @@ def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
     cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar', compras_user, None, Usuario, Rol)
     db.session.refresh(req)
     assert req.estado == 'Pendiente de Cotizar'
-    assert enviar.call_count >= 1
+    assert enviar.call_count == 2
     destinatarios_list = [call.args[0] for call in enviar.call_args_list]
     assert any(compras_user.email in dest for dest in destinatarios_list)
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_cambio_a_comprada_historial(app, client, mocker):
