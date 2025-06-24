@@ -10,7 +10,7 @@ from threading import Thread
 import requests
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
-from flask import current_app as app, session, redirect, url_for, flash
+from flask import current_app as app, session, redirect, url_for, flash, request
 from flask_login import current_user
 
 from . import db, login_manager
@@ -19,7 +19,6 @@ from .models import (
     Usuario,
     Departamento,
     Requisicion,
-    DetalleRequisicion,
     ProductoCatalogo,
     IntentoLoginFallido,
     AuditoriaAcciones,
@@ -31,20 +30,29 @@ from .config import ESTADO_INICIAL_REQUISICION, ESTADOS_HISTORICOS
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if (
-            not current_user.is_authenticated
-            or not current_user.rol_asignado
-            or current_user.rol_asignado.nombre != "Admin"
-        ):
+        if not current_user.is_authenticated: # Primero chequear autenticación
+            # Guardar la URL a la que se intentaba acceder para redirigir después del login
+            return redirect(url_for('main.login', next=request.url))
+
+        # Permitir si es superadmin O si tiene el rol "Admin"
+        # Asegurarse que current_user.rol_asignado existe antes de acceder a .nombre
+        is_admin_role = hasattr(current_user, 'rol_asignado') and \
+                        current_user.rol_asignado and \
+                        current_user.rol_asignado.nombre == "Admin"
+
+        # current_user.superadmin podría no existir si el usuario no es un objeto Usuario completo
+        # (aunque UserMixin debería proveerlo o se puede añadir un getattr)
+        # Para AdminVirtual, superadmin es True. Para Usuario, es un campo de la BD.
+        is_super_admin_flag = getattr(current_user, 'superadmin', False)
+
+        if not (is_super_admin_flag or is_admin_role):
             flash(
-                "Acceso no autorizado. Se requieren permisos de Administrador.",
+                "Acceso no autorizado. Se requieren permisos de Administrador o Superadministrador.",
                 "danger",
             )
             return redirect(url_for("main.index"))
         return f(*args, **kwargs)
-
     return decorated_function
-
 
 def superadmin_required(f):
     @wraps(f)
@@ -433,79 +441,7 @@ def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
     else:
         app.logger.warning(f"No se encontraron correos para el rol {nombre_rol}")
 
-
-def cambiar_estado_requisicion(
-    requisicion_id: int,
-    nuevo_estado: str,
-    usuario_actual: Usuario | None = None,
-    comentario: str | None = None,
-) -> bool:
-    requisicion = db.session.get(Requisicion, requisicion_id)
-    if not requisicion:
-        app.logger.error(f"Requisición {requisicion_id} no encontrada")
-        return False
-
-    requisicion.estado = nuevo_estado
-    if comentario is not None:
-        requisicion.comentario_estado = comentario
-    try:
-        db.session.commit()
-        registrar_accion(
-            usuario_actual.id if usuario_actual else None,
-            "Requisiciones",
-            str(requisicion_id),
-            f"estado:{nuevo_estado}",
-        )
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error al cambiar estado de {requisicion_id}: {e}")
-        return False
-
-    mensaje_solicitante = generar_mensaje_correo(
-        "Solicitante", requisicion, nuevo_estado, comentario or ""
-    )
-    enviar_correo(
-        [requisicion.correo_solicitante], "Actualización de tu requisición", mensaje_solicitante
-    )
-    app.logger.info(
-        f"Correo enviado a {requisicion.correo_solicitante} con estado {nuevo_estado}"
-    )
-
-    if nuevo_estado == ESTADO_INICIAL_REQUISICION:
-        mensaje_almacen = generar_mensaje_correo(
-            "Almacén", requisicion, nuevo_estado, comentario or ""
-        )
-        enviar_correos_por_rol(
-            "Almacen", "Nueva requisición pendiente", mensaje_almacen
-        )
-        app.logger.info(
-            f"Correo enviado al rol Almacen por requisición #{requisicion.id}"
-        )
-
-    if nuevo_estado == "Aprobada por Almacén":
-        mensaje_compras = generar_mensaje_correo(
-            "Compras", requisicion, nuevo_estado, comentario or ""
-        )
-        enviar_correos_por_rol(
-            "Compras", "Requisición enviada por Almacén", mensaje_compras
-        )
-        app.logger.info(
-            f"Correo enviado al rol Compras por requisición #{requisicion.id}"
-        )
-
-    if nuevo_estado == "Pendiente de Cotizar":
-        mensaje_compras = generar_mensaje_correo(
-            "Compras", requisicion, nuevo_estado, comentario or ""
-        )
-        enviar_correos_por_rol(
-            "Compras", "Requisición pendiente por cotizar", mensaje_compras
-        )
-        app.logger.info(
-            f"Correo enviado al rol Compras (pendiente por cotizar) por requisición #{requisicion.id}"
-        )
-
-    return True
-
+# La función cambiar_estado_requisicion ha sido movida e integrada en RequisicionService.cambiar_estado
 
 def _crear_pdf_minimo(cabecera, detalles):
     logo_path = os.path.join(app.static_folder, "images", "logo_granja.jpg")
@@ -692,7 +628,7 @@ def subir_pdf_a_drive(nombre_archivo: str, ruta_local_pdf: str) -> str | None:
             return None
 
         creds = Credentials.from_service_account_file(
-            os.path.join(BASE_DIR, "service_account.json"),
+            os.path.join(app.root_path, '..', "service_account.json"), # Usar app.root_path
             scopes=["https://www.googleapis.com/auth/drive"],
         )
 
@@ -736,73 +672,4 @@ def guardar_pdf_requisicion(requisicion: Requisicion):
         return None
     return path
 
-
-def limpiar_requisiciones_viejas(dias: int = 15, guardar_mensaje: bool = False) -> int:
-    fecha_limite = datetime.now(pytz.UTC) - timedelta(days=dias)
-    try:
-        requisiciones = (
-            Requisicion.query
-            .filter(Requisicion.estado.in_(ESTADOS_HISTORICOS))
-            .filter(Requisicion.fecha_creacion < fecha_limite)
-            .all()
-        )
-
-        eliminadas = 0
-        subidas = 0
-
-        for req in requisiciones:
-            subida_exitosa = True
-
-            if not req.url_pdf_drive:
-                try:
-                    pdf_bytes = generar_pdf_requisicion(req)
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                        tmp.write(pdf_bytes)
-                        tmp.flush()
-                        nombre = f"requisicion_{req.numero_requisicion}.pdf"
-                        url = subir_pdf_a_drive(nombre, tmp.name)
-                    os.remove(tmp.name)
-
-                    if url:
-                        req.url_pdf_drive = url
-                        db.session.commit()
-                        app.logger.info(f"Requisicion {req.id} subida a Drive")
-                        subidas += 1
-                    else:
-                        subida_exitosa = False
-                except Exception as exc:
-                    db.session.rollback()
-                    app.logger.error(
-                        f"Error generando/subiendo PDF de requisicion {req.id}: {exc}",
-                        exc_info=True,
-                    )
-                    subida_exitosa = False
-
-            if subida_exitosa and req.url_pdf_drive:
-                try:
-                    db.session.delete(req)
-                    db.session.commit()
-                    eliminadas += 1
-                    app.logger.info(f"Requisicion {req.id} eliminada")
-                except Exception as exc:
-                    db.session.rollback()
-                    app.logger.error(
-                        f"Error eliminando requisicion {req.id}: {exc}", exc_info=True
-                    )
-
-        if guardar_mensaje and eliminadas:
-            session["notificacion_limpieza"] = (
-                f"Se eliminaron {eliminadas} requisiciones del sistema. {subidas} PDFs fueron subidos a Drive."
-            )
-
-        app.logger.info(
-            f"limpiar_requisiciones_viejas: {subidas} subidas, {eliminadas} eliminadas"
-        )
-        return eliminadas
-
-    except Exception as exc:
-        db.session.rollback()
-        app.logger.error(
-            f"Error en limpiar_requisiciones_viejas: {exc}", exc_info=True
-        )
-        return 0
+# La función limpiar_requisiciones_viejas ha sido movida e integrada en RequisicionService.limpiar_requisiciones_antiguas

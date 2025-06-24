@@ -21,7 +21,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from functools import wraps
 import requests
-from email_utils import render_correo_html
+# from email_utils import render_correo_html # Eliminado por redundancia
 import base64
 import click
 
