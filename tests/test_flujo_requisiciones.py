@@ -5,6 +5,7 @@ from unittest.mock import call
 
 from app import app as flask_app, db, crear_datos_iniciales, Usuario, Rol, Departamento, Requisicion, ESTADO_INICIAL_REQUISICION, cambiar_estado_requisicion
 
+
 @pytest.fixture
 def app(tmp_path):
     flask_app.config.update(
@@ -18,6 +19,7 @@ def app(tmp_path):
         yield flask_app
         db.session.remove()
         db.drop_all()
+
 
 @pytest.fixture
 def client(app):
@@ -73,6 +75,7 @@ def crear_requisicion_para(usuario: Usuario):
 
 def test_creacion_requisicion_envia_correos(client, mocker):
     enviar = mocker.patch('app.enviar_correo')
+    almacen_user = crear_usuario('alm_test', 'Almacen')
     solicitante = crear_usuario('solicitante', 'Solicitante')
     login(client, 'solicitante')
 
@@ -87,12 +90,12 @@ def test_creacion_requisicion_envia_correos(client, mocker):
         'detalles-0-cantidad': '1',
         'detalles-0-unidad_medida': 'Unidad'
     }
-
     response = client.post('/requisiciones/crear', data=data, follow_redirects=True)
     assert response.status_code == 200
-    # correo al solicitante y a Almacén
-    assert enviar.call_count >= 1
-    print("Correos enviados (creación):", enviar.call_args_list)
+    assert enviar.call_count == 2
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(solicitante.email in dest for dest in destinatarios_list)
+    assert any(almacen_user.email in dest for dest in destinatarios_list)
 
 
 def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
@@ -105,16 +108,10 @@ def test_aprobacion_por_almacen_envia_a_compras(app, mocker):
     cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen_user)
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Almacén'
-
-    # Mostrar a quiénes se envió
-    print(enviar.call_args_list)
-
-    # Al menos un correo debe enviarse
-    assert enviar.call_count >= 1
-
-    # Si existe usuario de Compras, uno de los correos debe incluirlo
+    assert enviar.call_count == 2
     destinatarios_list = [call.args[0] for call in enviar.call_args_list]
     assert any(compras_user.email in dest for dest in destinatarios_list)
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_rechazo_por_almacen_envia_motivo(app, mocker):
@@ -130,7 +127,8 @@ def test_rechazo_por_almacen_envia_motivo(app, mocker):
     args = enviar.call_args[0]
     html = args[2].lower()
     assert 'falta stock' in html
-    print("Contenido HTML:", html)
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_aprobacion_por_compras_envia_correo(app, mocker):
@@ -145,7 +143,8 @@ def test_aprobacion_por_compras_envia_correo(app, mocker):
     db.session.refresh(req)
     assert req.estado == 'Aprobada por Compras'
     assert enviar.call_count >= 1
-    print("Correos enviados (compras):", enviar.call_args_list)
+    destinatarios_list = [call.args[0] for call in enviar.call_args_list]
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
@@ -160,9 +159,10 @@ def test_pendiente_cotizar_envia_correo_a_compras(app, mocker):
     cambiar_estado_requisicion(req.id, 'Pendiente de Cotizar', compras_user)
     db.session.refresh(req)
     assert req.estado == 'Pendiente de Cotizar'
-    assert enviar.call_count >= 1
+    assert enviar.call_count == 2
     destinatarios_list = [call.args[0] for call in enviar.call_args_list]
     assert any(compras_user.email in dest for dest in destinatarios_list)
+    assert any(solicitante.email in dest for dest in destinatarios_list)
 
 
 def test_cambio_a_comprada_historial(app, client, mocker):
@@ -187,24 +187,20 @@ def test_visibilidad_requisiciones_por_rol(app, client):
     compras_user = crear_usuario('compras_user', 'Compras')
     req = crear_requisicion_para(solicitante)
 
-    # visible para solicitante
     login(client, 'sol6')
     resp = client.get('/requisiciones')
     assert b'RQTEST' in resp.data
 
-    # visible para almacen
     login(client, 'almacen_user')
     resp = client.get('/requisiciones')
     assert b'RQTEST' in resp.data
 
-    # no visible para compras hasta que pase a su estado
     login(client, 'compras_user')
-    print("Estado actual:", req.estado)
     resp = client.get('/requisiciones')
     if req.estado == 'Pendiente de Revisión Almacén':
         assert b'RQTEST' not in resp.data
     else:
-        print("La requisición ya fue procesada por Almacén y es visible para Compras.")
+        pass
 
     cambiar_estado_requisicion(req.id, 'Aprobada por Almacén', almacen)
     resp = client.get('/requisiciones')
