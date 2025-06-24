@@ -16,11 +16,13 @@ from . import (
     DURACION_SESION,
 )
 
+
 from .utils import (
     registrar_intento,
     exceso_intentos,
     admin_required,
     superadmin_required,
+
     # agregar_producto_al_catalogo, # Movido o usado dentro del servicio
     obtener_sugerencias_productos, # Usado en rutas para pasar a templates
     # enviar_correo, # Usado dentro del servicio
@@ -42,17 +44,17 @@ from .models import (
     # ProductoCatalogo, # Manejado por el servicio
     AdminVirtual,
     AuditoriaAcciones, # Usado en dashboard
+
 )
 
 from .forms import (
     LoginForm,
     UserForm,
     EditUserForm,
-    RequisicionForm,
-    CambiarEstadoForm,
-    ConfirmarEliminarForm,
     ConfirmarEliminarUsuarioForm,
 )
+# Requisition forms are no longer imported here
+# from .requisiciones.forms import (...)
 
 from .services.requisicion_service import requisicion_service
 from .services.usuario_service import usuario_service
@@ -64,6 +66,8 @@ def login():
         return redirect(url_for('main.index'))
     form = LoginForm()
     ip_addr = request.remote_addr
+
+    from .models import Usuario
 
     if form.validate_on_submit():
         if exceso_intentos(ip_addr, form.username.data):
@@ -120,6 +124,8 @@ def logout():
 @login_required
 @admin_required
 def listar_usuarios():
+    from .models import Usuario
+
     page = request.args.get('page', 1, type=int)
     per_page = app.config.get('PER_PAGE', 10) # Usar config si está disponible
     usuarios_paginados = usuario_service.listar_usuarios_paginados(page=page, per_page=per_page)
@@ -129,6 +135,7 @@ def listar_usuarios():
 @login_required
 @admin_required
 def crear_usuario():
+
     form = UserForm()
     # Poblar choices del formulario usando el servicio o directamente si es simple
     # El servicio puede encapsular la lógica de qué roles/deptos puede ver/asignar el current_user
@@ -146,24 +153,28 @@ def crear_usuario():
             return redirect(url_for('main.listar_usuarios'))
         # Si hay error, el servicio ya flasheó y/o añadió errores al form.
         # Se re-renderiza el template con el form que contiene los errores.
+
             
     return render_template(
         'admin/crear_usuario.html',
         form=form,
+      
         # Ya no es necesario pasar roles y departamentos directamente si el form los carga bien.
         # Sin embargo, si el template los usa para algo más, se pueden mantener.
         # roles=roles_disponibles,
         # departamentos=departamentos_disponibles,
-        title="Crear Nuevo Usuario"
+
     )
 
 @main.route('/admin/usuarios/<int:usuario_id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def editar_usuario(usuario_id):
+
     usuario = usuario_service.obtener_usuario_por_id(usuario_id) # get_or_404
 
     # Lógica de permiso: Un admin no puede editar un superadmin a menos que él mismo sea superadmin.
+
     if usuario.superadmin and not current_user.superadmin:
         flash('No tiene permisos para editar a un superadministrador.', 'danger')
         return redirect(url_for('main.listar_usuarios'))
@@ -195,6 +206,7 @@ def editar_usuario(usuario_id):
 
 
     if form.validate_on_submit():
+
         # Si no es superadmin y el rol_id fue alterado (ej. por habilitar el campo desde el browser)
         if not current_user.superadmin and form.rol_id.data != usuario.rol_id:
              flash("No tiene permisos para cambiar el rol del usuario.", "warning")
@@ -210,6 +222,7 @@ def editar_usuario(usuario_id):
     all_roles = Rol.query.order_by(Rol.nombre).all()
     all_departamentos = Departamento.query.order_by(Departamento.nombre).all()
 
+
     return render_template('admin/editar_usuario.html', form=form,
                            usuario_id=usuario.id, # o usuario=usuario
                            # Pasar todos los roles/deptos para el selector si el form no los limita
@@ -222,7 +235,9 @@ def editar_usuario(usuario_id):
 @login_required
 @admin_required # Un admin puede llegar aquí, pero la acción de eliminar es @superadmin_required
 def confirmar_eliminar_usuario(usuario_id):
+
     usuario = usuario_service.obtener_usuario_por_id(usuario_id)
+
     if usuario.id == current_user.id:
         flash('No puede eliminar su propio usuario.', 'danger')
         # Redirigir a editar o listar, ya que no puede proceder.
@@ -242,6 +257,7 @@ def confirmar_eliminar_usuario(usuario_id):
 
 @main.route('/admin/usuarios/<int:usuario_id>/eliminar', methods=['POST'])
 @login_required
+
 @superadmin_required # Solo superadmin puede ejecutar esta acción.
 def eliminar_usuario_post(usuario_id):
     form = ConfirmarEliminarUsuarioForm() # Para validación CSRF
@@ -249,6 +265,7 @@ def eliminar_usuario_post(usuario_id):
         flash('Petición inválida o error de CSRF.', 'danger')
         # Redirigir a la confirmación de nuevo o a listar usuarios
         return redirect(url_for('main.confirmar_eliminar_usuario', usuario_id=usuario_id))
+
 
     # El servicio ya maneja la lógica de si el usuario puede ser eliminado (ej. no a sí mismo, no al último superadmin)
     # y también si el current_user tiene permiso (aunque el decorador ya lo hizo).
@@ -277,6 +294,7 @@ def limpiar_requisiciones_viejas_route():
     else:
         flash('Ocurrió un error durante la limpieza de requisiciones antiguas.', 'danger')
     return redirect(url_for('main.historial_requisiciones'))
+
 
 @main.route('/')
 @login_required
@@ -314,6 +332,7 @@ def dashboard():
         recientes=recientes,
         title='Dashboard'
     )
+
 @main.route('/requisiciones/crear', methods=['GET', 'POST'])
 @login_required
 def crear_requisicion():
@@ -682,6 +701,7 @@ def imprimir_requisicion(requisicion_id):
         app.logger.error(f"Error al generar PDF para requisición {requisicion_id}: {e}", exc_info=True)
         flash("Error al generar el PDF de la requisición.", "danger")
         return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion_id))
+
 
 @main.app_errorhandler(500)
 def internal_server_error(error):

@@ -3,7 +3,7 @@ import pytz
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
-from .config import ESTADO_INICIAL_REQUISICION
+from .requisiciones.constants import ESTADO_INICIAL_REQUISICION
 
 class Rol(db.Model):
     __tablename__ = 'rol'

@@ -34,18 +34,6 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-from . import models
-from .models import (
-    Rol,
-    Usuario,
-    Departamento,
-    Requisicion,
-    DetalleRequisicion,
-    ProductoCatalogo,
-    IntentoLoginFallido,
-    AuditoriaAcciones,
-    AdminVirtual,
-)
 from .utils import (
     ensure_session_token_column,
     ensure_ultimo_login_column,
@@ -109,6 +97,9 @@ def create_app():
     from . import routes
     app.register_blueprint(routes.main)
 
+    from .requisiciones import requisiciones_bp
+    app.register_blueprint(requisiciones_bp)
+
     with app.app_context():
         try:
             ensure_session_token_column()
@@ -151,11 +142,13 @@ from .forms import (
     LoginForm,
     UserForm,
     EditUserForm,
-    DetalleRequisicionForm,
-    RequisicionForm,
-    CambiarEstadoForm,
-    ConfirmarEliminarForm,
     ConfirmarEliminarUsuarioForm,
+)
+from .requisiciones.forms import (
+    RequisicionForm,
+    DetalleRequisicionForm,
+    CambiarEstadoForm,
+    ConfirmarEliminarForm
 )
 
 # --- Modelos ---
@@ -170,7 +163,8 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         try:
-            crear_datos_iniciales()
+            from .models import Rol, Usuario, Departamento
+            crear_datos_iniciales(Rol, Departamento, Usuario)
         except Exception as e:
             app.logger.warning(f"No se pudieron crear datos iniciales: {e}")
     # Ejecutar con `flask run` o gunicorn
@@ -179,13 +173,15 @@ if __name__ == '__main__':
 @app.cli.command('crear-datos')
 def cli_crear_datos():
     """Crea roles y departamentos iniciales."""
-    crear_datos_iniciales()
+    from .models import Rol, Usuario, Departamento
+    crear_datos_iniciales(Rol, Departamento, Usuario)
     click.echo('Datos iniciales creados.')
 
 
 @app.cli.command('crear-admin')
 @click.option('--password', default=None, help='Contraseña para el usuario admin')
 def cli_crear_admin(password):
+    from .models import Rol, Usuario
     """Crea o actualiza el usuario administrador."""
     rol = Rol.query.filter_by(nombre='Superadmin').first()
     if not rol:
@@ -231,7 +227,8 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         try:
-            crear_datos_iniciales()
+            from .models import Rol, Usuario, Departamento
+            crear_datos_iniciales(Rol, Departamento, Usuario)
         except Exception as e:
             app.logger.warning(f"No se pudieron crear datos iniciales: {e}")
     # Ejecutar con `flask run` o gunicorn

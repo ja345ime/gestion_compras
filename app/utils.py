@@ -14,6 +14,7 @@ from flask import current_app as app, session, redirect, url_for, flash, request
 from flask_login import current_user
 
 from . import db, login_manager
+
 from .models import (
     Rol,
     Usuario,
@@ -23,8 +24,8 @@ from .models import (
     IntentoLoginFallido,
     AuditoriaAcciones,
     AdminVirtual,
+
 )
-from .config import ESTADO_INICIAL_REQUISICION, ESTADOS_HISTORICOS
 
 
 def admin_required(f):
@@ -93,6 +94,7 @@ def registrar_accion(
     objeto: str | None,
     accion: str,
 ) -> None:
+    from .models import AuditoriaAcciones
     try:
         entrada = AuditoriaAcciones(
             usuario_id=usuario_id,
@@ -108,6 +110,7 @@ def registrar_accion(
 
 
 def registrar_intento(ip: str, username: str | None, exito: bool) -> None:
+    from .models import IntentoLoginFallido
     try:
         intento = IntentoLoginFallido(ip=ip, username=username, exito=exito)
         db.session.add(intento)
@@ -117,6 +120,7 @@ def registrar_intento(ip: str, username: str | None, exito: bool) -> None:
 
 
 def exceso_intentos(ip: str, username: str | None) -> bool:
+    from .models import IntentoLoginFallido
     limite = datetime.now(pytz.UTC) - timedelta(minutes=10)
     fallidos_ip = (
         IntentoLoginFallido.query.filter_by(ip=ip, exito=False)
@@ -138,6 +142,7 @@ def exceso_intentos(ip: str, username: str | None) -> bool:
 
 @login_manager.user_loader
 def load_user(user_id):
+    from .models import AdminVirtual, Usuario
     try:
         if user_id == "0":
             admin = AdminVirtual()
@@ -152,7 +157,7 @@ def load_user(user_id):
         return None
 
 
-def crear_datos_iniciales():
+def crear_datos_iniciales(Rol, Departamento, Usuario):
     with app.app_context():
         departamentos_nombres = [
             "Administración",
@@ -222,6 +227,7 @@ def crear_datos_iniciales():
 
 
 def agregar_producto_al_catalogo(nombre_producto: str):
+    from .models import ProductoCatalogo
     if nombre_producto and nombre_producto.strip():
         nombre_estandarizado = nombre_producto.strip().title()
         producto_existente = ProductoCatalogo.query.filter_by(
@@ -250,6 +256,7 @@ def agregar_producto_al_catalogo(nombre_producto: str):
 
 
 def obtener_sugerencias_productos():
+    from .models import ProductoCatalogo
     try:
         productos = ProductoCatalogo.query.order_by(ProductoCatalogo.nombre).all()
         return [p.nombre for p in productos]
@@ -258,11 +265,11 @@ def obtener_sugerencias_productos():
         return []
 
 
-def obtener_emails_por_rol(nombre_rol: str):
+def obtener_emails_por_rol(nombre_rol: str, UsuarioModel, RolModel):
     try:
         usuarios = (
-            Usuario.query.join(Rol)
-            .filter(Rol.nombre == nombre_rol, Usuario.activo == True)
+            UsuarioModel.query.join(RolModel)
+            .filter(RolModel.nombre == nombre_rol, UsuarioModel.activo == True)
             .all()
         )
         return [u.email for u in usuarios if u.email]
@@ -277,6 +284,7 @@ def generar_mensaje_correo(
     estado_actual: str,
     motivo: str = "",
 ) -> str:
+    from .models import Requisicion
     titulo = ""
     cuerpo = ""
 
@@ -431,8 +439,10 @@ def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
     Thread(target=enviar_correo_api, args=(destinatarios, asunto, mensaje), daemon=True).start()
 
 
-def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
-    destinatarios = obtener_emails_por_rol(nombre_rol)
+def enviar_correos_por_rol(
+    nombre_rol: str, asunto: str, mensaje: str, UsuarioModel, RolModel
+) -> None:
+    destinatarios = obtener_emails_por_rol(nombre_rol, UsuarioModel, RolModel)
     if destinatarios:
         enviar_correo(destinatarios, asunto, mensaje)
         app.logger.info(
@@ -441,7 +451,9 @@ def enviar_correos_por_rol(nombre_rol: str, asunto: str, mensaje: str) -> None:
     else:
         app.logger.warning(f"No se encontraron correos para el rol {nombre_rol}")
 
+
 # La función cambiar_estado_requisicion ha sido movida e integrada en RequisicionService.cambiar_estado
+
 
 def _crear_pdf_minimo(cabecera, detalles):
     logo_path = os.path.join(app.static_folder, "images", "logo_granja.jpg")
@@ -595,6 +607,7 @@ def _crear_pdf_minimo(cabecera, detalles):
 
 
 def generar_pdf_requisicion(requisicion: Requisicion):
+    from .models import Requisicion
     cabecera = [
         ("Requisición", requisicion.numero_requisicion),
         ("Fecha", requisicion.fecha_creacion.strftime("%d/%m/%Y %H:%M")),
@@ -660,6 +673,7 @@ def subir_pdf_a_drive(nombre_archivo: str, ruta_local_pdf: str) -> str | None:
 
 
 def guardar_pdf_requisicion(requisicion: Requisicion):
+    from .models import Requisicion
     pdf_dir = os.path.join(app.static_folder, "pdf")
     os.makedirs(pdf_dir, exist_ok=True)
     path = os.path.join(pdf_dir, f"requisicion_{requisicion.id}.pdf")
@@ -672,4 +686,6 @@ def guardar_pdf_requisicion(requisicion: Requisicion):
         return None
     return path
 
+
 # La función limpiar_requisiciones_viejas ha sido movida e integrada en RequisicionService.limpiar_requisiciones_antiguas
+
