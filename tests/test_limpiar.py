@@ -1,7 +1,8 @@
 import pytz
 from datetime import datetime, timedelta
 
-from app import db, Requisicion, Usuario
+from app import db
+from app.models import Requisicion, Usuario
 from app import limpiar_requisiciones_viejas
 
 

@@ -1,13 +1,11 @@
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, SelectField, TextAreaField, SubmitField,
-    DecimalField, FieldList, FormField, PasswordField, BooleanField
+    PasswordField, BooleanField
 )
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp, NumberRange
 
-from .models import Rol, Departamento
 from flask import current_app
-from .config import ESTADOS_REQUISICION
 
 
 class LoginForm(FlaskForm):
@@ -39,6 +37,7 @@ class UserForm(FlaskForm):
     submit = SubmitField('Guardar Usuario')
 
     def __init__(self, *args, **kwargs):
+        from .models import Rol, Departamento
         super(UserForm, self).__init__(*args, **kwargs)
         try:
             roles_query = Rol.query.order_by(Rol.nombre).all()
@@ -63,6 +62,7 @@ class EditUserForm(UserForm):
     )
     confirm_password = PasswordField('Confirmar Contraseña', validators=[Optional()])
     submit = SubmitField('Actualizar Usuario')
+
 
 
 class DetalleRequisicionForm(FlaskForm):
@@ -130,6 +130,7 @@ class ConfirmarEliminarForm(FlaskForm):
     """Formulario simple para confirmar la eliminación de una requisición."""
 
     submit = SubmitField('Sí, Eliminar Requisición')
+
 
 
 class ConfirmarEliminarUsuarioForm(FlaskForm):
