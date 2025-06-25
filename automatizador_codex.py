@@ -102,13 +102,34 @@ def solicitar_archivos(lista_archivos: list[str], prompt: str, api_key: str):
         },
         {"role": "user", "content": prompt},
     ]
-    texto = generar_respuesta_modelo(mensajes, api_key)
-    datos = extraer_json(texto)
+
+    intentos = 0
+    texto = ""
+    datos = None
+
+    while intentos < 3:
+        texto = generar_respuesta_modelo(mensajes, api_key)
+        datos = extraer_json(texto)
+        if datos is not None:
+            break
+
+        intentos += 1
+        if intentos >= 3:
+            break
+        print("Respuesta no válida al solicitar archivos. Reintentando...")
+        mensajes.append(
+            {
+                "role": "user",
+                "content": "Por favor, responde únicamente con JSON válido.",
+            }
+        )
+
     if datos is None:
-        print("Respuesta no válida al solicitar archivos:")
+        print("No se pudo obtener un JSON válido al solicitar archivos:")
         print(texto)
     else:
         print("Archivos solicitados:", datos)
+
     return datos
 
 
