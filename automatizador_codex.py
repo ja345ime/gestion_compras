@@ -236,8 +236,39 @@ def main():
 
     cambios = solicitar_cambios(archivos_contenido, prompt, api_key)
     if not cambios:
-        print("No se encontraron cambios válidos en la respuesta.")
-        return
+        print("Intentando convertir la respuesta a JSON...")
+        mensajes = [
+            {
+                "role": "system",
+                "content": "Utiliza los archivos proporcionados para modificar el sistema.",
+            },
+            {
+                "role": "system",
+                "content": "Archivos actuales:\n"
+                + json.dumps(archivos_contenido, indent=2, ensure_ascii=False),
+            },
+            {"role": "user", "content": prompt},
+        ]
+
+        texto = generar_respuesta_modelo(mensajes, api_key)
+        mensajes.append({"role": "assistant", "content": texto})
+        mensajes.append(
+            {
+                "role": "user",
+                "content": (
+                    "Convierte la respuesta anterior a un diccionario JSON plano donde cada clave "
+                    "sea una ruta de archivo y cada valor el nuevo contenido completo de ese archivo. "
+                    "Devuelve solo el JSON."
+                ),
+            }
+        )
+
+        texto = generar_respuesta_modelo(mensajes, api_key)
+        cambios = extraer_json(texto)
+
+        if not cambios:
+            print("No se encontraron cambios válidos")
+            return
 
     for ruta, nuevo_contenido in cambios.items():
         if not isinstance(nuevo_contenido, str):
