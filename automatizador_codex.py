@@ -12,9 +12,9 @@ BASE_DIR = Path("/home/gestion_compras")
 
 # Rutas de los archivos clave del sistema que se enviarán al modelo
 ARCHIVOS_CLAVE = [
-    "/home/gestion_compras/app/routes/requisiciones.py",
-    "/home/gestion_compras/app/utils/auditoria.py",
-    "/home/gestion_compras/app/models.py",
+    str(ruta)
+    for ruta in Path("/home/gestion_compras").rglob("*.py")
+    if "venv" not in str(ruta) and "__pycache__" not in str(ruta)
 ]
 
 
@@ -78,6 +78,7 @@ def guardar_archivo(ruta: str, contenido: str):
     else:
         print(f"El archivo {ruta} no existía; se creará uno nuevo.")
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(contenido, encoding="utf-8")
     print(f"{ruta} sobrescrito correctamente.")
 
