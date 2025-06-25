@@ -58,20 +58,20 @@ def leer_archivos(rutas) -> dict:
     return contenidos
 
 def leer_prompt(ruta: str) -> str:
-    """Lee el prompt de instrucciones del usuario."""
+    """Lee el archivo de instrucciones del usuario en UTF-8."""
 
     path = Path(ruta)
     if not path.is_absolute():
         path = BASE_DIR / path
 
-    if path.exists():
-        try:
-            return path.read_text(encoding="utf-8")
-        except Exception as exc:
-            print(f"Error al leer el prompt: {exc}")
-    else:
-        print(f"Archivo de prompt no encontrado: {ruta}")
-    return ""
+    if not path.exists():
+        raise FileNotFoundError(f"Archivo de prompt no encontrado: {ruta}")
+
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception as exc:
+        print(f"Error al leer el prompt: {exc}")
+        raise
 
 def generar_respuesta_modelo(mensajes: list[dict], api_key: str) -> str:
     """Envía los mensajes al modelo y devuelve la respuesta de texto."""
@@ -87,7 +87,7 @@ def generar_respuesta_modelo(mensajes: list[dict], api_key: str) -> str:
         return ""
 
 
-def solicitar_archivos(lista_archivos: list[str], prompt: str, api_key: str):
+def solicitar_archivos(lista_archivos: list[str], prompt_text: str, api_key: str):
     """Paso 1: solicita al modelo los archivos necesarios."""
 
     print("Preguntando al modelo qué archivos necesita...")
@@ -100,7 +100,7 @@ def solicitar_archivos(lista_archivos: list[str], prompt: str, api_key: str):
             "role": "system",
             "content": "Archivos disponibles:\n" + "\n".join(lista_archivos),
         },
-        {"role": "user", "content": prompt},
+        {"role": "user", "content": prompt_text},
     ]
 
     intentos = 0
@@ -133,7 +133,7 @@ def solicitar_archivos(lista_archivos: list[str], prompt: str, api_key: str):
     return datos
 
 
-def solicitar_cambios(archivos: dict, prompt: str, api_key: str):
+def solicitar_cambios(archivos: dict, prompt_text: str, api_key: str):
     """Paso 2: solicita al modelo los cambios finales."""
 
     print("Solicitando cambios finales al modelo...")
@@ -148,7 +148,7 @@ def solicitar_cambios(archivos: dict, prompt: str, api_key: str):
             "content": "Archivos actuales:\n"
             + json.dumps(archivos, indent=2, ensure_ascii=False),
         },
-        {"role": "user", "content": prompt},
+        {"role": "user", "content": prompt_text},
     ]
     texto = generar_respuesta_modelo(mensajes, api_key)
 
@@ -212,17 +212,19 @@ def main():
         print("OPENAI_API_KEY no encontrado en .env")
         return
 
-    print("Leyendo prompt_actual.txt...")
-    prompt = leer_prompt("prompt_actual.txt")
-    if not prompt:
-        print("No se pudo leer el prompt. Abortando.")
-        return
+    print("Leyendo contexto_codex.txt y prompt_actual.txt...")
+    context_path = BASE_DIR / "contexto_codex.txt"
+    prompt_text = ""
+    if context_path.exists():
+        prompt_text += context_path.read_text(encoding="utf-8") + "\n\n"
+
+    prompt_text += leer_prompt("prompt_actual.txt")
 
     print("Escaneando archivos del proyecto...")
     lista_archivos = listar_archivos(BASE_DIR)
     print(f"Se encontraron {len(lista_archivos)} archivos disponibles.")
 
-    peticion = solicitar_archivos(lista_archivos, prompt, api_key)
+    peticion = solicitar_archivos(lista_archivos, prompt_text, api_key)
     if not peticion:
         print("No se obtuvo una petición válida de archivos.")
         return
@@ -234,7 +236,7 @@ def main():
     print(f"Leyendo {len(archivos_a_leer)} archivos solicitados...")
     archivos_contenido = leer_archivos(archivos_a_leer)
 
-    cambios = solicitar_cambios(archivos_contenido, prompt, api_key)
+    cambios = solicitar_cambios(archivos_contenido, prompt_text, api_key)
     if not cambios:
         print("Intentando convertir la respuesta a JSON...")
         mensajes = [
@@ -247,7 +249,7 @@ def main():
                 "content": "Archivos actuales:\n"
                 + json.dumps(archivos_contenido, indent=2, ensure_ascii=False),
             },
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": prompt_text},
         ]
 
         texto = generar_respuesta_modelo(mensajes, api_key)
