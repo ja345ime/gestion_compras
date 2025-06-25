@@ -35,15 +35,18 @@ def main():
     log("========== INICIO SUPERVISOR ==========")
     ejecutar_automatizador()
     
-    codigo, salida = ejecutar_pruebas()
-    
-    MAX_REINTENTOS = 2
+    MAX_INTENTOS = 10
     intentos = 0
-    
-    while codigo != 0 and intentos < MAX_REINTENTOS:
-    	reintentar_fix(salida)
-    	codigo, salida = ejecutar_pruebas()
-    	intentos += 1
+
+    while True:
+        codigo, salida = ejecutar_pruebas()
+        if codigo == 0:
+            break
+        if intentos >= MAX_INTENTOS:
+            log("❌ Se alcanzó el máximo de reintentos.")
+            break
+        reintentar_fix(salida)
+        intentos += 1
 
     if codigo != 0 or "502" in salida:
         ejecutar_codex_entorno()
