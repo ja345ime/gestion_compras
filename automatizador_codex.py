@@ -77,6 +77,10 @@ def solicitar_cambios(archivos: dict, prompt: str, api_key: str):
         {"role": "user", "content": prompt},
     ]
     texto = generar_respuesta_modelo(mensajes, api_key)
+
+    print("RESPUESTA DEL MODELO AL PEDIR ARCHIVOS:")
+
+    print(texto)
     return extraer_json(texto)
 
 def extraer_json(texto: str):
