@@ -16,6 +16,20 @@ from datetime import datetime
 # Directorio base absoluto del proyecto
 BASE_DIR = Path("/home/gestion_compras")
 
+# Rutas a los archivos de instrucciones y contexto
+PROMPT_PATH = Path(__file__).parent / "prompt_actual.txt"
+CONTEXT_PATH = Path(__file__).parent / "contexto_codex.txt"
+
+# Cargar el texto combinado de contexto y prompt
+prompt_text = ""
+if CONTEXT_PATH.exists():
+    prompt_text += CONTEXT_PATH.read_text(encoding="utf-8") + "\n\n"
+
+if PROMPT_PATH.exists():
+    prompt_text += PROMPT_PATH.read_text(encoding="utf-8")
+else:
+    raise FileNotFoundError("prompt_actual.txt no encontrado")
+
 
 def listar_archivos(base: Path) -> list[str]:
     """Devuelve la lista de archivos disponibles en el proyecto."""
@@ -213,12 +227,7 @@ def main():
         return
 
     print("Leyendo contexto_codex.txt y prompt_actual.txt...")
-    context_path = BASE_DIR / "contexto_codex.txt"
-    prompt_text = ""
-    if context_path.exists():
-        prompt_text += context_path.read_text(encoding="utf-8") + "\n\n"
-
-    prompt_text += leer_prompt("prompt_actual.txt")
+    # prompt_text se carga al iniciar el módulo usando PROMPT_PATH y CONTEXT_PATH
 
     print("Escaneando archivos del proyecto...")
     lista_archivos = listar_archivos(BASE_DIR)
