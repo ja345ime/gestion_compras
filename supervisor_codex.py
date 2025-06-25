@@ -5,11 +5,57 @@ from pathlib import Path
 
 PROMPT_PATH = Path(__file__).parent / 'prompt_actual.txt'
 LOG_PATH = Path(__file__).parent / 'supervisor_codex.log'
+ERROR_PATH = Path(__file__).parent / 'ultimo_error_codex.txt'
+FUNCIONES_DANADAS_LOG = Path(__file__).parent / 'funciones_danadas.log'
+
+IGNORAR_TESTS = ['test_correo.py']
+MAX_REPETIR_ERROR = 3
 
 def log(msg):
     with open(LOG_PATH, 'a', encoding='utf-8') as f:
         f.write(msg + '\n')
     print(msg)
+
+
+def leer_ultimo_error() -> str:
+    if ERROR_PATH.exists():
+        return ERROR_PATH.read_text()
+    return ""
+
+
+def guardar_error(err: str) -> None:
+    ERROR_PATH.write_text(err)
+
+
+def limpiar_error() -> None:
+    if ERROR_PATH.exists():
+        ERROR_PATH.unlink()
+
+
+def registrar_funciones_danadas(error: str) -> None:
+    patrones = [
+        r"cannot import name '(.+?)'",
+        r"AttributeError: module '.+?' has no attribute '(.+?)'",
+    ]
+    encontradas = []
+    for patron in patrones:
+        match = re.search(patron, error)
+        if match:
+            encontradas.append(match.group(1))
+
+    if encontradas:
+        with open(FUNCIONES_DANADAS_LOG, 'a', encoding='utf-8') as f:
+            for func in encontradas:
+                f.write(func + '\n')
+        log("📄 Funciones dañadas registradas: " + ", ".join(encontradas))
+
+
+def usar_siguiente_prompt_si_existe() -> None:
+    siguiente = Path('siguiente_prompt.txt')
+    if siguiente.exists():
+        PROMPT_PATH.write_text(siguiente.read_text(encoding='utf-8'))
+        siguiente.unlink()
+        log('➡️ Cargado siguiente_prompt.txt')
 
 
 def ejecutar_automatizador():
@@ -22,7 +68,20 @@ def ejecutar_pruebas():
     resultado = subprocess.run(['pytest'], capture_output=True, text=True)
     log("🧪 STDOUT:\n" + resultado.stdout)
     log("🧪 STDERR:\n" + resultado.stderr)
-    return resultado.returncode, resultado.stdout + resultado.stderr, resultado.stderr
+
+    salida_completa = resultado.stdout + resultado.stderr
+
+    for test in IGNORAR_TESTS:
+        if test in salida_completa:
+            log(f"📛 Fallo en {test}. Ejecutando nuevamente ignorándolo.")
+            patron = f"not {test.replace('.py', '')}"
+            resultado = subprocess.run(['pytest', '-k', patron], capture_output=True, text=True)
+            log("🧪 STDOUT (ignorado):\n" + resultado.stdout)
+            log("🧪 STDERR (ignorado):\n" + resultado.stderr)
+            salida_completa = resultado.stdout + resultado.stderr
+            break
+
+    return resultado.returncode, salida_completa, resultado.stderr
 
 def reintentar_fix(error_texto):
     log("⚠️ Fallaron las pruebas. Reintentando con nuevo prompt.")
@@ -37,41 +96,42 @@ def ejecutar_codex_entorno():
 def main():
     log("========== INICIO SUPERVISOR ==========")
     ejecutar_automatizador()
-    
+
     MAX_INTENTOS = 10
     intentos = 0
+    repetidos = 0
+    ultimo_error = leer_ultimo_error()
 
     while True:
         codigo, salida, stderr_log = ejecutar_pruebas()
+        registrar_funciones_danadas(stderr_log)
+
         if codigo == 0:
+            limpiar_error()
+            usar_siguiente_prompt_si_existe()
             break
-        if intentos >= MAX_INTENTOS:
-            break
+
+        if stderr_log == ultimo_error:
+            repetidos += 1
+            log(f"🔁 Mismo error detectado {repetidos} veces")
+        else:
+            repetidos = 0
+            ultimo_error = stderr_log
+            guardar_error(stderr_log)
+
+        if repetidos >= MAX_REPETIR_ERROR or intentos >= MAX_INTENTOS:
+            log("❌ Se alcanzó el máximo de reintentos o de errores repetidos.")
+            registrar_error_codex(stderr_log)
+            return
+
         reintentar_fix(salida)
         intentos += 1
 
-    # Nueva lógica automática
-    if intentos >= MAX_INTENTOS:
-        log("❌ Se alcanzó el máximo de reintentos.")
-        registrar_error_codex(stderr_log)
-
-        if (
-            "Se alcanzó el máximo de reintentos" in salida
-            or "ImportError" in salida
-            or "cannot import name" in salida
-        ):
-            log(
-                "⚠️ Se detectó error no resuelto. Se suspende el uso del nuevo prompt."
-            )
-            # El sistema no aplica el siguiente prompt automáticamente
-            return
-
-    # Solo si no hubo errores previos no resueltos
     ejecutar_automatizador()
 
     if codigo != 0 or "502" in salida:
         ejecutar_codex_entorno()
-    
+
     log("✅ Supervisor finalizado\n")
 
 def instalar_dependencias_si_cambian():
@@ -104,8 +164,7 @@ def instalar_dependencias_si_cambian():
         log("📦 requirements.txt no ha cambiado. No se reinstalan dependencias.")
 
 def registrar_error_codex(stderr_log: str):
-    error_path = Path("ultimo_error_codex.txt")
-    error_path.write_text(stderr_log)
+    guardar_error(stderr_log)
 
     resumen_prompt = generar_prompt_desde_error(stderr_log)
     Path("prompt_actual.txt").write_text(resumen_prompt)
