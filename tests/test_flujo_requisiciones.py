@@ -1,4 +1,5 @@
 import pytest
+from uuid import uuid4
 from unittest.mock import call
 from app import app as flask_app, db, crear_datos_iniciales
 from app.models import Usuario, Rol, Departamento, Requisicion
@@ -33,7 +34,16 @@ def crear_usuario(
 ):
     """Crea un usuario para pruebas garantizando unicidad en cédula y correo."""
     rol = Rol.query.filter_by(nombre=rol_nombre).first()
+    if not rol:
+        rol = Rol(nombre=rol_nombre, descripcion=f"Rol {rol_nombre}")
+        db.session.add(rol)
+        db.session.commit()
+
     departamento = Departamento.query.first()
+    if not departamento:
+        departamento = Departamento(nombre=f"Dept-{uuid4().hex[:6]}")
+        db.session.add(departamento)
+        db.session.commit()
 
     usuario = Usuario(
         username=username,
@@ -41,7 +51,7 @@ def crear_usuario(
         email=email or f"{username}_{uuid4().hex[:4]}@example.com",
         nombre_completo=username.capitalize(),
         rol_id=rol.id,
-        departamento_id=departamento.id if departamento else None,
+        departamento_id=departamento.id,
         activo=True,
     )
     usuario.set_password(password)
