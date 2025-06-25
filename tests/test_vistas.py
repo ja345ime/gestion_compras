@@ -20,7 +20,7 @@ def crear_usuario(client, username, rol_nombre):
     rol = Rol(nombre=rol_nombre)
     db.session.add(rol)
     db.session.commit()
-    user = Usuario(nombre_usuario=username, rol_id=rol.id, password_hash='123')
+    user = Usuario(username=username, rol_id=rol.id, password_hash='123')
     db.session.add(user)
     db.session.commit()
     return user

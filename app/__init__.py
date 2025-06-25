@@ -57,8 +57,12 @@ from .utils import (
 
 
 
-def create_app():
-    app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
+def create_app(config_name: str | None = None):
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(BASE_DIR, "templates"),
+        static_folder=os.path.join(BASE_DIR, "static"),
+    )
 
 
     # Configuración de logging a archivo
@@ -85,6 +89,10 @@ def create_app():
     app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
     app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
     app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM')
+
+    if config_name:
+        # Permite a las pruebas pasar un nombre de configuración sin causar error
+        app.config['TESTING'] = True
 
     db.init_app(app)
     migrate.init_app(app, db)
