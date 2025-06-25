@@ -19,7 +19,7 @@ def crear_usuario_test(client, username, rol_nombre):
     rol = Rol(nombre=rol_nombre)
     db.session.add(rol)
     db.session.commit()
-    user = Usuario(nombre_usuario=username, rol_id=rol.id, password_hash='123')
+    user = Usuario(username=username, rol_id=rol.id, password_hash='123')
     db.session.add(user)
     db.session.commit()
     return user
@@ -31,7 +31,7 @@ def test_superadmin_crea_admin(client):
     user = crear_usuario_test(client, 'superadmin1', 'Superadmin')
     login(client, 'superadmin1')
     resp = client.post('/admin/usuarios/crear', data={
-        'nombre_usuario': 'admin1',
+        'username': 'admin1',
         'rol_id': 2,
         'password': '123',
         'confirmar': '123',
