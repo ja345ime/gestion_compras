@@ -1,0 +1,8 @@
+<nav>
+    <ul>
+        <!-- Otras opciones del menú -->
+        {% if current_user.is_authenticated and current_user.superadmin %}
+            <li><a href="{{ url_for('reportes.reporte_requisiciones') }}">Reporte de Requisiciones</a></li>
+        {% endif %}
+    </ul>
+</nav>

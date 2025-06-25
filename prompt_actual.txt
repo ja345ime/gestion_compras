@@ -1,28 +1,16 @@
-Agrega un botón en la vista de requisiciones que diga "Imprimir PDF" y que use una función ya existente llamada generar_pdf_requisicion().
-Quiero que apliques tú mismo los cambios en el sistema, no solo me digas qué hacer.
+Quiero que agregues una función que permita a un superadministrador generar un reporte completo de todas las requisiciones agrupadas por estado y por departamento, en formato HTML.
 
-Agrega un botón "Imprimir PDF" en la vista de requisiciones y haz que al hacer clic se llame la función `generar_pdf_requisicion(requisicion_id)`. Usa la lógica real de Flask como la que ya está implementada en el sistema.
+Debe incluir lo siguiente:
 
-Usa este formato:
+1. Una nueva ruta visible solo para superadmins (usa login_required y verificación de current_user.superadmin).
+2. Una plantilla llamada reportes/reporte_requisiciones.html que muestre:
+   - Una tabla por cada estado de requisición.
+   - Dentro de cada tabla, las requisiciones agrupadas por departamento.
+   - Dentro de cada grupo de departamento, las requisiciones listadas con su número, solicitante, prioridad y fecha.
+3. El reporte debe ordenarse por fecha descendente dentro de cada grupo.
+4. El acceso debe estar en una nueva opción visible en el menú solo si current_user.superadmin es True.
+5. Si no existe la carpeta reportes/ en templates/, créala.
 
-```json
-{
-  "app/routes/requisiciones.py": "contenido completo nuevo de este archivo",
-  "app/utils/auditoria.py": "contenido completo nuevo de este archivo si lo modificas",
-  "app/templates/requisiciones.html": "nuevo contenido del HTML si se modifica"
-}
-No me des explicaciones, solo el JSON válido con los archivos a sobrescribir. Si no necesitas modificar un archivo, no lo pongas en el JSON.
+Además, si lo consideras necesario, puedes mover parte de la lógica a un helper o utils nuevo.
+Haz todos los cambios tú automáticamente.
 
-yaml
-Copiar
-Editar
-
----
-
-### Luego:
-
-1. Guarda ese texto en `prompt_actual.txt`
-2. Ejecuta de nuevo:
-
-```bash
-python3 automatizador_codex.py
