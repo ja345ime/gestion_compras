@@ -16,3 +16,4 @@ google-auth-oauthlib
 Flask-Migrate
 psycopg2-binary
 pytz
+openai>=1.0
