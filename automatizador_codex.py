@@ -4,14 +4,14 @@ import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 from datetime import datetime
 
 # Rutas de los archivos clave del sistema que se enviarán al modelo
 ARCHIVOS_CLAVE = [
-    "app/routes/requisiciones.py",
-    "app/utils/auditoria.py",
-    "app/models.py",
+    "/home/gestion_compras/app/routes/requisiciones.py",
+    "/home/gestion_compras/app/utils/auditoria.py",
+    "/home/gestion_compras/app/models.py",
 ]
 
 def leer_archivos(rutas):
@@ -34,7 +34,7 @@ def leer_prompt(ruta: str) -> str:
     print(f"Archivo de prompt no encontrado: {ruta}")
     return ""
 
-def generar_respuesta(archivos: dict, prompt: str) -> str:
+def generar_respuesta(archivos: dict, prompt: str, api_key: str) -> str:
     """Envía los archivos y el prompt al modelo y devuelve la respuesta."""
     mensajes = [
         {
@@ -47,8 +47,9 @@ def generar_respuesta(archivos: dict, prompt: str) -> str:
         },
         {"role": "user", "content": prompt},
     ]
-    respuesta = openai.ChatCompletion.create(model="gpt-4o", messages=mensajes)
-    return respuesta["choices"][0]["message"]["content"]
+    client = OpenAI(api_key=api_key)
+    respuesta = client.chat.completions.create(model="gpt-4o", messages=mensajes)
+    return respuesta.choices[0].message.content
 
 def extraer_json(texto: str):
     """Intenta obtener el primer objeto JSON dentro del texto."""
@@ -86,14 +87,12 @@ def main():
     if not api_key:
         print("OPENAI_API_KEY no encontrado en .env")
         return
-    openai.api_key = api_key
-
     # Obtener el contenido de los archivos clave y el prompt del usuario
     archivos = leer_archivos(ARCHIVOS_CLAVE)
     prompt = leer_prompt("prompt_actual.txt")
 
     # Solicitar al modelo los cambios a aplicar
-    respuesta = generar_respuesta(archivos, prompt)
+    respuesta = generar_respuesta(archivos, prompt, api_key)
     # Mostrar la respuesta generada por el modelo
     print("Respuesta del modelo:\n", respuesta)
 
