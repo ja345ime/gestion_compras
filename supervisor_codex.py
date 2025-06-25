@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import subprocess
+import re
 from pathlib import Path
 
 PROMPT_PATH = Path(__file__).parent / 'prompt_actual.txt'
@@ -21,7 +22,7 @@ def ejecutar_pruebas():
     resultado = subprocess.run(['pytest'], capture_output=True, text=True)
     log("🧪 STDOUT:\n" + resultado.stdout)
     log("🧪 STDERR:\n" + resultado.stderr)
-    return resultado.returncode, resultado.stdout + resultado.stderr
+    return resultado.returncode, resultado.stdout + resultado.stderr, resultado.stderr
 
 def reintentar_fix(error_texto):
     log("⚠️ Fallaron las pruebas. Reintentando con nuevo prompt.")
@@ -41,7 +42,7 @@ def main():
     intentos = 0
 
     while True:
-        codigo, salida = ejecutar_pruebas()
+        codigo, salida, stderr_log = ejecutar_pruebas()
         if codigo == 0:
             break
         if intentos >= MAX_INTENTOS:
@@ -52,6 +53,7 @@ def main():
     # Nueva lógica automática
     if intentos >= MAX_INTENTOS:
         log("❌ Se alcanzó el máximo de reintentos.")
+        registrar_error_codex(stderr_log)
 
         if (
             "Se alcanzó el máximo de reintentos" in salida
@@ -100,6 +102,54 @@ def instalar_dependencias_si_cambian():
             log(resultado.stderr)
     else:
         log("📦 requirements.txt no ha cambiado. No se reinstalan dependencias.")
+
+def registrar_error_codex(stderr_log: str):
+    error_path = Path("ultimo_error_codex.txt")
+    error_path.write_text(stderr_log)
+
+    resumen_prompt = generar_prompt_desde_error(stderr_log)
+    Path("prompt_actual.txt").write_text(resumen_prompt)
+    log("📄 Generado nuevo prompt_actual.txt basado en el error detectado.")
+
+
+def generar_prompt_desde_error(stderr_log: str) -> str:
+    if "ImportError" in stderr_log:
+        match = re.search(r"cannot import name '(.+?)' from '(.+?)'", stderr_log)
+        if match:
+            funcion = match.group(1)
+            modulo = match.group(2)
+            return f"""
+El siguiente error persiste en las pruebas:
+
+ImportError: cannot import name '{funcion}' from '{modulo}'
+
+Quiero que verifiques si esta función está definida correctamente en ese archivo y que la exportes bien. Si no existe, créala con una implementación válida de prueba.
+
+Luego ejecuta nuevamente pytest para asegurarte de que pasa.
+
+No modifiques otras partes del proyecto. Solo soluciona esto.
+"""
+    elif "ModuleNotFoundError" in stderr_log:
+        modulo = re.search(r"No module named '(.+?)'", stderr_log).group(1)
+        return f"""
+El siguiente error persiste en las pruebas:
+
+ModuleNotFoundError: No module named '{modulo}'
+
+Revisa si ese módulo requiere instalación vía pip y agrégalo al requirements.txt si es necesario, luego instálalo.
+
+Después corre nuevamente las pruebas.
+
+No toques el resto del proyecto.
+"""
+    else:
+        return f"""
+Último error detectado en pytest:
+
+{stderr_log[:1000]}
+
+Analiza el error, sugiere cómo corregirlo, aplica el cambio, y vuelve a ejecutar las pruebas. Solo corrige ese fallo.
+"""
 
 if __name__ == '__main__':
     main()
