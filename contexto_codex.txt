@@ -1,0 +1,5 @@
+Este es un proyecto Flask en Python. Usa SQLAlchemy, templates Jinja2, y pruebas automatizadas con Pytest. Está organizado en módulos con rutas, formularios, modelos y utilidades.
+
+Por favor, evita cualquier código en Node.js, JavaScript o HTML de front-end. No uses React, Express ni ninguna tecnología de frontend o stack MERN.
+
+Todos los cambios deben estar en Python puro, respetando la arquitectura del proyecto existente.

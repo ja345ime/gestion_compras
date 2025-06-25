@@ -1,16 +1,9 @@
-Quiero que agregues una función que permita a un superadministrador generar un reporte completo de todas las requisiciones agrupadas por estado y por departamento, en formato HTML.
+PROMPT_PATH = Path(__file__).parent / 'prompt_actual.txt'
+CONTEXT_PATH = Path(__file__).parent / 'contexto_codex.txt'
 
-Debe incluir lo siguiente:
+prompt_text = ''
+if CONTEXT_PATH.exists():
+    prompt_text += CONTEXT_PATH.read_text(encoding='utf-8') + '\n\n'
 
-1. Una nueva ruta visible solo para superadmins (usa login_required y verificación de current_user.superadmin).
-2. Una plantilla llamada reportes/reporte_requisiciones.html que muestre:
-   - Una tabla por cada estado de requisición.
-   - Dentro de cada tabla, las requisiciones agrupadas por departamento.
-   - Dentro de cada grupo de departamento, las requisiciones listadas con su número, solicitante, prioridad y fecha.
-3. El reporte debe ordenarse por fecha descendente dentro de cada grupo.
-4. El acceso debe estar en una nueva opción visible en el menú solo si current_user.superadmin es True.
-5. Si no existe la carpeta reportes/ en templates/, créala.
-
-Además, si lo consideras necesario, puedes mover parte de la lógica a un helper o utils nuevo.
-Haz todos los cambios tú automáticamente.
+prompt_text += PROMPT_PATH.read_text(encoding='utf-8')
 

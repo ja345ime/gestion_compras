@@ -1,0 +1,39 @@
+========== INICIO SUPERVISOR ==========
+➡️ Ejecutando automatizador_codex.py
+➡️ Ejecutando pruebas (pytest)
+🧪 STDOUT:
+
+🧪 STDERR:
+ImportError while loading conftest '/home/gestion_compras/tests/conftest.py'.
+tests/conftest.py:8: in <module>
+    from app import app as flask_app, db, crear_datos_iniciales
+app/__init__.py:37: in <module>
+    from .utils import (
+app/utils.py:18: in <module>
+    from .models import (
+app/models.py:6: in <module>
+    from .requisiciones.constants import ESTADO_INICIAL_REQUISICION
+app/requisiciones/__init__.py:5: in <module>
+    from . import routes
+app/requisiciones/routes.py:20: in <module>
+    from ..models import (
+E   ImportError: cannot import name 'Requisicion' from partially initialized module 'app.models' (most likely due to a circular import) (/home/gestion_compras/app/models.py)
+
+⚠️ Fallaron las pruebas. Reintentando con nuevo prompt.
+➡️ Ejecutando automatizador_codex.py
+➡️ Ejecutando pruebas (pytest)
+🧪 STDOUT:
+
+🧪 STDERR:
+ImportError while loading conftest '/home/gestion_compras/tests/conftest.py'.
+tests/conftest.py:8: in <module>
+    from app import app as flask_app, db, crear_datos_iniciales
+app/__init__.py:37: in <module>
+    from .utils import (
+app/utils.py:18: in <module>
+    from .models import (
+E   ImportError: cannot import name 'Rol' from 'app.models' (/home/gestion_compras/app/models.py)
+
+🛠 Ejecutando codex_entorno.py
+✅ Supervisor finalizado
+

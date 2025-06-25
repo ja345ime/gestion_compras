@@ -1,0 +1,15 @@
+2025-06-25 15:11:54,394 [INFO] ===== Verificando entorno =====
+2025-06-25 15:11:54,412 [INFO] Proceso gunicorn activo: 700904 gunicorn
+700905 gunicorn
+700906 gunicorn
+700907 gunicorn
+2025-06-25 15:11:54,427 [INFO] Proceso flask no encontrado
+2025-06-25 15:11:54,443 [INFO] Proceso nginx activo: 39826 nginx
+577636 nginx
+2025-06-25 15:11:54,443 [INFO] El puerto 8000 está libre
+2025-06-25 15:11:54,444 [WARNING] codex_api.service no existe
+2025-06-25 15:11:54,444 [INFO] Escribiendo archivo de servicio en /etc/systemd/system/codex_api.service
+2025-06-25 15:12:00,483 [INFO] Gunicorn reiniciado
+2025-06-25 15:12:00,539 [INFO] Logs recientes de codex_api.service:
+-- No entries --
+
