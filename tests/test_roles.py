@@ -3,6 +3,7 @@ import pytest
 from app import create_app, db
 from app.models import Usuario, Rol, Requisicion
 from flask_login import login_user
+from .conftest import crear_usuario
 
 @pytest.fixture
 def client():
@@ -16,13 +17,9 @@ def client():
             db.drop_all()
 
 def crear_usuario_test(client, username, rol_nombre):
-    rol = Rol(nombre=rol_nombre)
-    db.session.add(rol)
-    db.session.commit()
-    user = Usuario(username=username, rol_id=rol.id, password_hash='123')
-    db.session.add(user)
-    db.session.commit()
-    return user
+    """Crear usuario utilizando helper de conftest con todos los campos."""
+    with client.application.app_context():
+        return crear_usuario(username, rol_nombre, password="123")
 
 def login(client, username):
     return client.post('/login', data={'username': username, 'password': '123'}, follow_redirects=True)

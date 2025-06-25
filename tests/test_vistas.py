@@ -4,6 +4,7 @@ from flask import url_for
 from app import create_app, db
 from app.models import Usuario, Rol
 from flask_login import login_user
+from .conftest import crear_usuario
 
 @pytest.fixture
 def client():
@@ -16,14 +17,10 @@ def client():
             db.session.remove()
             db.drop_all()
 
-def crear_usuario(client, username, rol_nombre):
-    rol = Rol(nombre=rol_nombre)
-    db.session.add(rol)
-    db.session.commit()
-    user = Usuario(username=username, rol_id=rol.id, password_hash='123')
-    db.session.add(user)
-    db.session.commit()
-    return user
+def crear_usuario_test(client, username, rol_nombre):
+    """Crear usuario con todos los campos usando helper de conftest."""
+    with client.application.app_context():
+        return crear_usuario(username, rol_nombre, password="123")
 
 def login(client, username):
     return client.post('/login', data={'username': username, 'password': '123'}, follow_redirects=True)
@@ -41,7 +38,7 @@ def login(client, username):
 ])
 def test_vistas_basicas_cargan(client, ruta):
     # Crear y loguear como superadmin para todas las vistas
-    user = crear_usuario(client, "superadmin1", "Superadmin")
+    user = crear_usuario_test(client, "superadmin1", "Superadmin")
     login(client, "superadmin1")
     resp = client.get(ruta, follow_redirects=True)
     assert resp.status_code == 200 or resp.status_code == 302  # Redirección válida también
