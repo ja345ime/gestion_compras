@@ -1,15 +1,20 @@
-2025-06-25 15:11:54,394 [INFO] ===== Verificando entorno =====
-2025-06-25 15:11:54,412 [INFO] Proceso gunicorn activo: 700904 gunicorn
-700905 gunicorn
-700906 gunicorn
-700907 gunicorn
-2025-06-25 15:11:54,427 [INFO] Proceso flask no encontrado
-2025-06-25 15:11:54,443 [INFO] Proceso nginx activo: 39826 nginx
+2025-06-25 21:04:45,719 [INFO] ===== Verificando entorno =====
+2025-06-25 21:04:45,727 [INFO] Proceso gunicorn activo: 710721 gunicorn
+710723 gunicorn
+710724 gunicorn
+710725 gunicorn
+2025-06-25 21:04:45,735 [INFO] Proceso flask no encontrado
+2025-06-25 21:04:45,743 [INFO] Proceso nginx activo: 39826 nginx
 577636 nginx
-2025-06-25 15:11:54,443 [INFO] El puerto 8000 está libre
-2025-06-25 15:11:54,444 [WARNING] codex_api.service no existe
-2025-06-25 15:11:54,444 [INFO] Escribiendo archivo de servicio en /etc/systemd/system/codex_api.service
-2025-06-25 15:12:00,483 [INFO] Gunicorn reiniciado
-2025-06-25 15:12:00,539 [INFO] Logs recientes de codex_api.service:
+2025-06-25 21:04:45,743 [INFO] El puerto 8000 está libre
+2025-06-25 21:04:45,743 [INFO] Se encontró codex_api.service en /etc/systemd/system/codex_api.service
+2025-06-25 21:04:45,761 [INFO] ○ codex_api.service - codex API Gunicorn Service
+     Loaded: loaded (/etc/systemd/system/codex_api.service; enabled; vendor preset: enabled)
+     Active: inactive (dead)
+
+2025-06-25 21:04:45,761 [WARNING] codex_api.service no está activo
+2025-06-25 21:04:45,761 [INFO] Escribiendo archivo de servicio en /etc/systemd/system/codex_api.service
+2025-06-25 21:04:47,037 [INFO] Gunicorn reiniciado
+2025-06-25 21:04:47,051 [INFO] Logs recientes de codex_api.service:
 -- No entries --
 

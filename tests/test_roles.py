@@ -3,7 +3,7 @@ import pytest
 from app import create_app, db
 from app.models import Usuario, Rol, Requisicion
 from flask_login import login_user
-from .conftest import crear_usuario
+from tests.conftest import crear_usuario
 
 @pytest.fixture
 def client():
