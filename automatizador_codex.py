@@ -7,23 +7,25 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from datetime import datetime
 
+# Directorio base absoluto del proyecto
+BASE_DIR = Path("/home/gestion_compras")
+
 # Rutas de los archivos clave del sistema que se enviarán al modelo
 ARCHIVOS_CLAVE = [
-    "/home/gestion_compras/app/routes/requisiciones.py",
-    "/home/gestion_compras/app/utils/auditoria.py",
-    "/home/gestion_compras/app/models.py",
+    BASE_DIR / "app" / "routes" / "requisiciones.py",
+    BASE_DIR / "app" / "utils" / "auditoria.py",
+    BASE_DIR / "app" / "models.py",
 ]
 
 def leer_archivos(rutas):
     """Retorna un dict con el contenido de cada ruta existente."""
-    # Diccionario de {ruta: contenido}
     contenidos = {}
     for ruta in rutas:
         path = Path(ruta)
         if path.exists():
-            contenidos[ruta] = path.read_text(encoding="utf-8")
+            contenidos[str(path)] = path.read_text(encoding="utf-8")
         else:
-            print(f"Archivo no encontrado: {ruta}")
+            print(f"Archivo no encontrado: {path}")
     return contenidos
 
 def leer_prompt(ruta: str) -> str:
