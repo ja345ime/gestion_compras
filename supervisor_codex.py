@@ -43,10 +43,27 @@ def main():
         if codigo == 0:
             break
         if intentos >= MAX_INTENTOS:
-            log("❌ Se alcanzó el máximo de reintentos.")
             break
         reintentar_fix(salida)
         intentos += 1
+
+    # Nueva lógica automática
+    if intentos >= MAX_INTENTOS:
+        log("❌ Se alcanzó el máximo de reintentos.")
+
+        if (
+            "Se alcanzó el máximo de reintentos" in salida
+            or "ImportError" in salida
+            or "cannot import name" in salida
+        ):
+            log(
+                "⚠️ Se detectó error no resuelto. Se suspende el uso del nuevo prompt."
+            )
+            # El sistema no aplica el siguiente prompt automáticamente
+            return
+
+    # Solo si no hubo errores previos no resueltos
+    ejecutar_automatizador()
 
     if codigo != 0 or "502" in salida:
         ejecutar_codex_entorno()
