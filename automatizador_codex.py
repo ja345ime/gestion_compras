@@ -12,10 +12,11 @@ BASE_DIR = Path("/home/gestion_compras")
 
 # Rutas de los archivos clave del sistema que se enviarán al modelo
 ARCHIVOS_CLAVE = [
-    BASE_DIR / "app" / "routes" / "requisiciones.py",
-    BASE_DIR / "app" / "utils" / "auditoria.py",
-    BASE_DIR / "app" / "models.py",
+    "/home/gestion_compras/app/routes/requisiciones.py",
+    "/home/gestion_compras/app/utils/auditoria.py",
+    "/home/gestion_compras/app/models.py",
 ]
+
 
 def leer_archivos(rutas):
     """Retorna un dict con el contenido de cada ruta existente."""

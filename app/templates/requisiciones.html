@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requisiciones</title>
+</head>
+<body>
+    <h1>Lista de Requisiciones</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Número Requisición</th>
+                <th>Nombre Solicitante</th>
+                <th>Departamento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for requisicion in requisiciones %}
+            <tr>
+                <td>{{ requisicion.id }}</td>
+                <td>{{ requisicion.numero_requisicion }}</td>
+                <td>{{ requisicion.nombre_solicitante }}</td>
+                <td>{{ requisicion.departamento_obj.nombre }}</td>
+                <td>
+                    <a href="{{ url_for('requisiciones.imprimir_requisicion', requisicion_id=requisicion.id) }}">Imprimir PDF</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
