@@ -1,7 +1,9 @@
+
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, SelectField, TextAreaField, SubmitField,
-    PasswordField, BooleanField
+    PasswordField, BooleanField, DecimalField,
+    FieldList, FormField
 )
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, Regexp, NumberRange
 
@@ -115,6 +117,7 @@ class RequisicionForm(FlaskForm):
         # Las opciones del departamento se cargarán desde cada vista
         # para evitar consultas fuera de contexto de aplicación
 
+from app.requisiciones.constants import ESTADOS_REQUISICION
 
 class CambiarEstadoForm(FlaskForm):
     estado = SelectField('Nuevo Estado', choices=ESTADOS_REQUISICION, validators=[DataRequired()])
