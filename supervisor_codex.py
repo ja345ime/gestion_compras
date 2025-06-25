@@ -10,9 +10,11 @@ def log(msg):
         f.write(msg + '\n')
     print(msg)
 
+
 def ejecutar_automatizador():
     log("➡️ Ejecutando automatizador_codex.py")
     subprocess.run(['python3', 'automatizador_codex.py'])
+    instalar_dependencias_si_cambian()
 
 def ejecutar_pruebas():
     log("➡️ Ejecutando pruebas (pytest)")
@@ -69,6 +71,35 @@ def main():
         ejecutar_codex_entorno()
     
     log("✅ Supervisor finalizado\n")
+
+def instalar_dependencias_si_cambian():
+    import hashlib
+
+    req_path = Path(__file__).parent / 'requirements.txt'
+    hash_path = Path(__file__).parent / '.hash_requirements.txt'
+
+    if not req_path.exists():
+        log("⚠️ No se encontró requirements.txt.")
+        return
+
+    contenido = req_path.read_bytes()
+    nuevo_hash = hashlib.sha256(contenido).hexdigest()
+
+    hash_anterior = ''
+    if hash_path.exists():
+        hash_anterior = hash_path.read_text()
+
+    if nuevo_hash != hash_anterior:
+        log("📦 Cambios detectados en requirements.txt. Instalando dependencias...")
+        resultado = subprocess.run(['pip3', 'install', '-r', str(req_path)], capture_output=True, text=True)
+        if resultado.returncode == 0:
+            log("✅ Dependencias instaladas correctamente.")
+            hash_path.write_text(nuevo_hash)
+        else:
+            log("❌ Error al instalar dependencias:")
+            log(resultado.stderr)
+    else:
+        log("📦 requirements.txt no ha cambiado. No se reinstalan dependencias.")
 
 if __name__ == '__main__':
     main()
