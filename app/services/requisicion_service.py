@@ -1,47 +1,42 @@
 # app/services/requisicion_service.py
 
 """
-Este módulo contendrá la lógica de negocio relacionada con las requisiciones.
+Este módulo contiene la lógica de negocio relacionada con las requisiciones.
 """
 
-from flask import current_app, flash, abort
-from datetime import datetime
+from flask import current_app, abort
+from datetime import datetime, timedelta
 import pytz
+import tempfile
+import os
+from typing import Optional, Tuple
 
 from app import db, ESTADO_INICIAL_REQUISICION, ESTADOS_REQUISICION, ESTADOS_REQUISICION_DICT, ESTADOS_HISTORICOS, TIEMPO_LIMITE_EDICION_REQUISICION
-from app.models import Requisicion, DetalleRequisicion, Departamento
-from app.utils import (
-    agregar_producto_al_catalogo,
-    enviar_correo,
-    enviar_correos_por_rol,
-    generar_mensaje_correo,
-    # cambiar_estado_requisicion as util_cambiar_estado_requisicion, # Se integra la lógica aquí
-    guardar_pdf_requisicion, # Podría integrarse o llamarse desde aquí si se genera PDF en el servicio
-    registrar_accion,
-    # limpiar_requisiciones_viejas as util_limpiar_requisiciones_viejas # Se integra la lógica aquí
-    subir_pdf_a_drive, # Necesario para la lógica integrada
-    generar_pdf_requisicion as util_generar_pdf_requisicion, # Necesario para la lógica integrada
-)
-import tempfile # Necesario para la lógica integrada
-import os # Necesario para la lógica integrada
-from datetime import timedelta # Necesario para la lógica integrada
-
-# Los formularios (RequisicionForm, CambiarEstadoForm, ConfirmarEliminarForm) se manejarán en las rutas
-# y los datos validados se pasarán a los métodos del servicio.
-
+from app.models import Requisicion, DetalleRequisicion, Departamento, Usuario, Rol
+import app.utils
 
 class RequisicionService:
+    """
+    Servicio para la gestión de requisiciones: creación, edición, eliminación, cambio de estado,
+    listados y limpieza de registros antiguos.
+    """
 
-    def crear_nueva_requisicion(self, form, current_user_id):
+    def _to_float(self, value):
+        """Convierte un valor a float si es posible, si no, lo retorna tal cual."""
+        try:
+            return float(value)
+        except Exception:
+            return value
+
+    def crear_nueva_requisicion(self, form, current_user_id: int) -> tuple:
         """
         Crea una nueva requisición con sus detalles.
-        Devuelve la nueva requisición creada o None si hay error.
+        Devuelve (requisición, mensaje).
         """
         try:
             departamento_seleccionado = Departamento.query.filter_by(nombre=form.departamento_nombre.data).first()
             if not departamento_seleccionado:
-                flash('Error: El departamento seleccionado no es válido.', 'danger')
-                return None
+                return None, 'Error: El departamento seleccionado no es válido.'
 
             nueva_requisicion = Requisicion(
                 numero_requisicion='RQ-' + datetime.now().strftime('%Y%m%d%H%M%S%f'),
@@ -60,69 +55,52 @@ class RequisicionService:
                 detalle_data = detalle_form_entry.data
                 if detalle_data['producto'] and detalle_data['cantidad'] is not None and detalle_data['unidad_medida']:
                     nombre_producto_estandarizado = detalle_data['producto'].strip().title()
+                    cantidad_val = self._to_float(detalle_data['cantidad'])
                     detalle = DetalleRequisicion(
                         requisicion=nueva_requisicion,
                         producto=nombre_producto_estandarizado,
-                        cantidad=detalle_data['cantidad'],
+                        cantidad=cantidad_val,
                         unidad_medida=detalle_data['unidad_medida']
                     )
                     db.session.add(detalle)
-                    agregar_producto_al_catalogo(nombre_producto_estandarizado)
+                    app.utils.agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
 
             # Notificaciones y PDF post-commit
             try:
-                mensaje = generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado, "")
-                enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
+                mensaje = app.utils.generar_mensaje_correo('Solicitante', nueva_requisicion, nueva_requisicion.estado, "")
+                app.utils.enviar_correo([nueva_requisicion.correo_solicitante], 'Requisición creada', mensaje)
 
                 if nueva_requisicion.estado == ESTADO_INICIAL_REQUISICION:
-                    mensaje_almacen = generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado, "")
-                    enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen)
+                    mensaje_almacen = app.utils.generar_mensaje_correo('Almacén', nueva_requisicion, nueva_requisicion.estado, "")
+                    app.utils.enviar_correos_por_rol('Almacen', 'Nueva requisición pendiente', mensaje_almacen, Usuario, Rol)
 
-                guardar_pdf_requisicion(nueva_requisicion)
+                app.utils.guardar_pdf_requisicion(nueva_requisicion)
             except Exception as e_notify:
                 current_app.logger.error(f"Error en notificaciones/PDF para requisición {nueva_requisicion.id}: {e_notify}", exc_info=True)
-                # No se hace rollback aquí ya que la requisición ya fue creada. Se podría loguear o encolar para reintento.
 
-            flash(f'¡Requisición creada con éxito! Número: {nueva_requisicion.numero_requisicion}', 'success')
-            return nueva_requisicion
+            return nueva_requisicion, f'¡Requisición creada con éxito! Número: {nueva_requisicion.numero_requisicion}'
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error al crear la requisición en servicio: {e}", exc_info=True)
-            flash(f'Error al crear la requisición: {str(e)}', 'danger')
-            return None
+            return None, f'Error al crear la requisición: {str(e)}'
 
-    def obtener_requisicion_por_id(self, requisicion_id, check_incomplete=True):
-        """Obtiene una requisición por su ID. Aborta con 404 si no se encuentra."""
+    def obtener_requisicion_por_id(self, requisicion_id: int, check_incomplete: bool = True) -> tuple:
+        """Obtiene una requisición por su ID. Devuelve (requisición, mensaje de error o None)."""
         requisicion = Requisicion.query.get(requisicion_id)
         if requisicion is None:
-            flash('Requisición no encontrada.', 'danger')
-            return None # La ruta manejará el redirect o abort(404)
+            return None, 'Requisición no encontrada.'
 
         if check_incomplete and not all([requisicion.numero_requisicion, requisicion.estado, requisicion.prioridad]):
-            flash('La requisición tiene datos incompletos.', 'warning')
-        return requisicion
+            return requisicion, 'La requisición tiene datos incompletos.'
+        return requisicion, None
 
-    def actualizar_requisicion(self, requisicion_id, form, current_user):
-        """Actualiza una requisición existente."""
-        requisicion_a_editar = self.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+    def actualizar_requisicion(self, requisicion_id: int, form, current_user) -> tuple:
+        """Actualiza una requisición existente. Devuelve (éxito, mensaje)."""
+        requisicion_a_editar, msg = self.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
         if not requisicion_a_editar:
-            return False # Ya se mostró flash en obtener_requisicion_por_id
-
-        # Lógica de permisos (ya validada en la ruta antes de llamar al servicio)
-        # es_creador = requisicion_a_editar.creador_id == current_user.id
-        # es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-        # ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
-        # dentro_del_limite = False
-        # if requisicion_a_editar.fecha_creacion:
-        #     fecha_creacion = requisicion_a_editar.fecha_creacion.replace(tzinfo=None)
-        #     if ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
-        #         dentro_del_limite = True
-        # estado_editable = requisicion_a_editar.estado == ESTADO_INICIAL_REQUISICION
-        # if not ((es_creador and dentro_del_limite and estado_editable) or es_admin):
-        #     flash('No tiene permiso para editar esta requisición o el tiempo límite ha expirado.', 'danger')
-        #     return False
+            return False, msg
 
         try:
             requisicion_a_editar.nombre_solicitante = form.nombre_solicitante.data
@@ -130,8 +108,7 @@ class RequisicionService:
             requisicion_a_editar.correo_solicitante = form.correo_solicitante.data
             departamento_seleccionado = Departamento.query.filter_by(nombre=form.departamento_nombre.data).first()
             if not departamento_seleccionado:
-                flash('Departamento seleccionado no válido.', 'danger')
-                return False
+                return False, 'Departamento seleccionado no válido.'
 
             requisicion_a_editar.departamento_id = departamento_seleccionado.id
             requisicion_a_editar.prioridad = form.prioridad.data
@@ -140,7 +117,7 @@ class RequisicionService:
             # Eliminar detalles existentes y agregar los nuevos
             for detalle_existente in list(requisicion_a_editar.detalles):
                 db.session.delete(detalle_existente)
-            db.session.flush() # Asegura que los deletes se ejecuten antes de los adds
+            db.session.flush()
 
             for detalle_form_data in form.detalles.data:
                 producto = detalle_form_data.get('producto')
@@ -148,131 +125,114 @@ class RequisicionService:
                 unidad_medida = detalle_form_data.get('unidad_medida')
                 if producto and cantidad is not None and unidad_medida:
                     nombre_producto_estandarizado = producto.strip().title()
+                    cantidad_val = self._to_float(cantidad)
                     nuevo_detalle = DetalleRequisicion(
                         requisicion_id=requisicion_a_editar.id,
                         producto=nombre_producto_estandarizado,
-                        cantidad=cantidad,
+                        cantidad=cantidad_val,
                         unidad_medida=unidad_medida
                     )
                     db.session.add(nuevo_detalle)
-                    agregar_producto_al_catalogo(nombre_producto_estandarizado)
+                    app.utils.agregar_producto_al_catalogo(nombre_producto_estandarizado)
 
             db.session.commit()
-            flash(f'Requisición {requisicion_a_editar.numero_requisicion} actualizada con éxito.', 'success')
-            return True
+            return True, f'Requisición {requisicion_a_editar.numero_requisicion} actualizada con éxito.'
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error al editar requisición en servicio: {str(e)}", exc_info=True)
-            flash('Error al actualizar la requisición.', 'danger')
-            return False
+            return False, 'Error al actualizar la requisición.'
 
     def eliminar_requisicion(self, requisicion_id, current_user):
         """Elimina una requisición."""
-        requisicion_a_eliminar = self.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+        requisicion_a_eliminar, msg = self.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
         if not requisicion_a_eliminar:
-            return False
-
-        # Lógica de permisos (ya validada en la ruta antes de llamar al servicio)
-        # es_creador = requisicion_a_eliminar.creador_id == current_user.id
-        # es_admin = current_user.rol_asignado and current_user.rol_asignado.nombre == 'Admin'
-        # ahora = datetime.now(pytz.UTC).replace(tzinfo=None)
-        # dentro_del_limite = False
-        # if requisicion_a_eliminar.fecha_creacion:
-        #     fecha_creacion = requisicion_a_eliminar.fecha_creacion.replace(tzinfo=None)
-        #     if ahora <= fecha_creacion + TIEMPO_LIMITE_EDICION_REQUISICION:
-        #         dentro_del_limite = True
-        # if not ((es_creador and dentro_del_limite) or es_admin):
-        #     flash('No tiene permiso para eliminar esta requisición o el tiempo límite ha expirado.', 'danger')
-        #     return False
+            return False, msg
 
         try:
             numero_req = requisicion_a_eliminar.numero_requisicion
             db.session.delete(requisicion_a_eliminar)
             db.session.commit()
-            registrar_accion(current_user.id, 'Requisiciones', numero_req, 'eliminar')
-            flash(f'Requisicion {numero_req} eliminada con éxito.', 'success')
-            return True
+            app.utils.registrar_accion(current_user.id, 'Requisiciones', numero_req, 'eliminar')
+            return True, f'Requisicion {numero_req} eliminada con éxito.'
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error al eliminar requisicion {requisicion_id} en servicio: {e}", exc_info=True)
-            flash(f'Error al eliminar la requisición: {str(e)}', 'danger')
-            return False
+            return False, f'Error al eliminar la requisición: {str(e)}'
 
     def cambiar_estado(self, requisicion_id, nuevo_estado, comentario, current_user):
         """Cambia el estado de una requisición."""
-        requisicion = self.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+        requisicion, msg = self.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
         if not requisicion:
-            return False # Flash ya mostrado
-
-        # La validación de si el rol puede cambiar al nuevo_estado se hace en la ruta (ver `opciones_estado_permitidas`)
-        # Aquí solo ejecutamos el cambio.
+            return False, msg
 
         if requisicion.estado == nuevo_estado and (not comentario or comentario == requisicion.comentario_estado):
-            flash('No se realizaron cambios (mismo estado y sin nuevo comentario o el mismo).', 'info')
-            return True # No es un error, pero no hubo cambio real
+            return True, 'No se realizaron cambios (mismo estado y sin nuevo comentario o el mismo).'
 
         if nuevo_estado in ['Rechazada por Almacén', 'Rechazada por Compras', 'Cancelada'] and not comentario:
-            flash('Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.', 'warning')
+            aviso = 'Es altamente recomendable ingresar un motivo al rechazar o cancelar la requisición.'
+        else:
+            aviso = None
 
-        # Lógica de util_cambiar_estado_requisicion integrada aquí:
         requisicion.estado = nuevo_estado
-        if comentario is not None: # Asegurar que el comentario se actualice solo si se provee uno nuevo
-            requisicion.comentario_estado = comentario
+        # Solo guardar comentario si es string o None
+        if comentario is not None:
+            if isinstance(comentario, str):
+                requisicion.comentario_estado = comentario
+            else:
+                requisicion.comentario_estado = str(comentario)
 
         try:
             db.session.commit()
-            registrar_accion(
-                current_user.id if current_user else None, # current_user puede ser AdminVirtual sin id real en BD
+            app.utils.registrar_accion(
+                current_user.id if current_user else None,
                 "Requisiciones",
                 str(requisicion.id),
                 f"estado:{nuevo_estado}",
             )
 
-            # Notificaciones por correo
-            mensaje_solicitante = generar_mensaje_correo(
+            mensaje_solicitante = app.utils.generar_mensaje_correo(
                 "Solicitante", requisicion, nuevo_estado, comentario or ""
             )
-            enviar_correo(
+            app.utils.enviar_correo(
                 [requisicion.correo_solicitante], "Actualización de tu requisición", mensaje_solicitante
             )
             current_app.logger.info(
                 f"Correo enviado a {requisicion.correo_solicitante} con estado {nuevo_estado}"
             )
 
-            if nuevo_estado == ESTADO_INICIAL_REQUISICION: # Aunque raro cambiar A este estado, se mantiene la lógica
-                mensaje_almacen = generar_mensaje_correo(
+            if nuevo_estado == ESTADO_INICIAL_REQUISICION:
+                mensaje_almacen = app.utils.generar_mensaje_correo(
                     "Almacén", requisicion, nuevo_estado, comentario or ""
                 )
-                enviar_correos_por_rol(
-                    "Almacen", "Nueva requisición pendiente", mensaje_almacen
+                app.utils.enviar_correos_por_rol(
+                    "Almacen", "Nueva requisición pendiente", mensaje_almacen, Usuario, Rol
                 )
             elif nuevo_estado == "Aprobada por Almacén":
-                mensaje_compras = generar_mensaje_correo(
+                mensaje_compras = app.utils.generar_mensaje_correo(
                     "Compras", requisicion, nuevo_estado, comentario or ""
                 )
-                enviar_correos_por_rol(
-                    "Compras", "Requisición enviada por Almacén", mensaje_compras
+                app.utils.enviar_correos_por_rol(
+                    "Compras", "Requisición enviada por Almacén", mensaje_compras, Usuario, Rol
                 )
-            elif nuevo_estado == "Pendiente de Cotizar": # Ejemplo de otro estado que podría notificar a Compras
-                 mensaje_compras_cotizar = generar_mensaje_correo(
+            elif nuevo_estado == "Pendiente de Cotizar":
+                 mensaje_compras_cotizar = app.utils.generar_mensaje_correo(
                     "Compras", requisicion, nuevo_estado, comentario or ""
                 )
-                 enviar_correos_por_rol(
-                    "Compras", "Requisición pendiente por cotizar", mensaje_compras_cotizar
+                 app.utils.enviar_correos_por_rol(
+                    "Compras", "Requisición pendiente por cotizar", mensaje_compras_cotizar, Usuario, Rol
                 )
-            # Añadir más notificaciones para otros cambios de estado si es necesario
 
             flash_message = f'El estado de la requisición {requisicion.numero_requisicion} ha sido actualizado a "{ESTADOS_REQUISICION_DICT.get(nuevo_estado, nuevo_estado)}".'
-            if comentario: # Solo si se guardó un comentario nuevo o actualizado
+            if comentario:
                 flash_message += " Comentario guardado."
-            flash(flash_message, 'success')
-            return True
+            if aviso:
+                flash_message = aviso + " " + flash_message
+            return True, flash_message
 
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error al cambiar estado de requisición {requisicion_id} en servicio: {e}", exc_info=True)
-            flash('Error crítico al actualizar el estado de la requisición.', 'danger')
-            return False
+            return False, 'Error crítico al actualizar el estado de la requisición.'
 
     def listar_requisiciones_para_usuario(self, current_user, filtro=None, page=1, per_page=10):
         """Lista las requisiciones activas visibles para el usuario actual según su rol y filtro."""
@@ -361,6 +321,9 @@ class RequisicionService:
         y si está dentro del límite de tiempo original para edición.
         Retorna un diccionario con: puede_editar, puede_eliminar, editable_dentro_limite_original.
         """
+        # Si viene una tupla (requisicion, mensaje), desempaquetar
+        if isinstance(requisicion, tuple):
+            requisicion = requisicion[0]
         if not requisicion:
             return {'puede_editar': False, 'puede_eliminar': False, 'editable_dentro_limite_original': False}
 
@@ -483,13 +446,13 @@ class RequisicionService:
 
                 if not req.url_pdf_drive: # Solo intentar subir si no hay URL
                     try:
-                        pdf_bytes = util_generar_pdf_requisicion(req) # Usar la utilidad de utils
+                        pdf_bytes = app.utils.generar_pdf_requisicion(req) # Usar la utilidad de utils
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf_file:
                             tmp_pdf_file.write(pdf_bytes)
                             tmp_pdf_file.flush() # Asegurar que todo esté escrito antes de leerlo
                             nombre_drive = f"requisicion_{req.numero_requisicion}.pdf"
                             # Llamar a la utilidad de utils para subir a Drive
-                            url_drive = subir_pdf_a_drive(nombre_drive, tmp_pdf_file.name)
+                            url_drive = app.utils.subir_pdf_a_drive(nombre_drive, tmp_pdf_file.name)
                         os.remove(tmp_pdf_file.name) # Eliminar archivo temporal
 
                         if url_drive:
@@ -522,7 +485,7 @@ class RequisicionService:
                 db.session.commit()
 
             if eliminadas_count > 0 : # Solo registrar acción si se eliminó algo
-                 registrar_accion(current_user_id, 'Sistema', f'Limpieza de {eliminadas_count} requisiciones antiguas ({dias} días). {subidas_count} PDFs subidos.', 'ejecutar')
+                 app.utils.registrar_accion(current_user_id, 'Sistema', f'Limpieza de {eliminadas_count} requisiciones antiguas ({dias} días). {subidas_count} PDFs subidos.', 'ejecutar')
 
             current_app.logger.info(f"Servicio limpiar_requisiciones_antiguas: {subidas_count} PDFs subidos, {eliminadas_count} requisiciones eliminadas.")
             return eliminadas_count

@@ -436,7 +436,12 @@ def enviar_correo_api(destinatarios: list, asunto: str, html_content: str) -> No
 
 
 def enviar_correo(destinatarios: list, asunto: str, mensaje: str) -> None:
-    Thread(target=enviar_correo_api, args=(destinatarios, asunto, mensaje), daemon=True).start()
+    from flask import current_app as app
+    if getattr(app, 'config', None) and app.config.get('TESTING', False):
+        # En modo testing, llamar directamente (sin thread)
+        enviar_correo_api(destinatarios, asunto, mensaje)
+    else:
+        Thread(target=enviar_correo_api, args=(destinatarios, asunto, mensaje), daemon=True).start()
 
 
 def enviar_correos_por_rol(

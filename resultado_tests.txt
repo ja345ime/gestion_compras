@@ -1,0 +1,57 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.1, pytest-8.4.1, pluggy-1.6.0 -- /usr/local/python/3.12.1/bin/python3
+cachedir: .pytest_cache
+rootdir: /workspaces/gestion_compras
+configfile: pytest.ini
+plugins: anyio-4.9.0, mock-3.14.1
+collecting ... collected 47 items
+
+tests/test_app.py::test_login_route_returns_200 PASSED                   [  2%]
+tests/test_app.py::test_crear_requisicion_requires_login PASSED          [  4%]
+tests/test_app.py::test_login_valid_credentials_redirects PASSED         [  6%]
+tests/test_app.py::test_login_success_html_contains_inicio PASSED        [  8%]
+tests/test_app.py::test_admin_can_change_user_password PASSED            [ 10%]
+tests/test_flujo_requisiciones.py::test_creacion_requisicion_envia_correos PASSED [ 12%]
+tests/test_flujo_requisiciones.py::test_aprobacion_por_almacen_envia_a_compras PASSED [ 14%]
+tests/test_flujo_requisiciones.py::test_rechazo_por_almacen_envia_motivo PASSED [ 17%]
+tests/test_flujo_requisiciones.py::test_aprobacion_por_compras_envia_correo PASSED [ 19%]
+tests/test_flujo_requisiciones.py::test_pendiente_cotizar_envia_correo_a_compras PASSED [ 21%]
+tests/test_flujo_requisiciones.py::test_cambio_a_comprada_historial PASSED [ 23%]
+tests/test_flujo_requisiciones.py::test_visibilidad_requisiciones_por_rol PASSED [ 25%]
+tests/test_limpiar.py::test_generar_pdf_requisicion_genera_pdf_valido PASSED [ 27%]
+tests/test_limpiar.py::test_limpiar_elimina_historicas_y_sube_pdf PASSED [ 29%]
+tests/test_limpiar.py::test_no_elimina_si_falla_subida PASSED            [ 31%]
+tests/test_permisos.py::test_solicitante_puede_editar_su_requisicion_en_30min PASSED [ 34%]
+tests/test_permisos.py::test_solicitante_no_edita_despues_30min PASSED   [ 36%]
+tests/test_permisos.py::test_solicitante_no_edita_despues_cambio_estado PASSED [ 38%]
+tests/test_permisos.py::test_otro_usuario_no_puede_editar_requisicion PASSED [ 40%]
+tests/test_permisos.py::test_admin_puede_editar_siempre PASSED           [ 42%]
+tests/test_permisos.py::test_solicitante_puede_eliminar_en_30min PASSED  [ 44%]
+tests/test_permisos.py::test_solicitante_no_elimina_despues_30min PASSED [ 46%]
+tests/test_permisos.py::test_otro_usuario_no_puede_eliminar_requisicion PASSED [ 48%]
+tests/test_permisos.py::test_admin_puede_eliminar_cualquier_requisicion PASSED [ 51%]
+tests/test_permisos.py::test_no_permiso_cambio_estado_por_rol_incorrecto PASSED [ 53%]
+tests/test_roles.py::test_superadmin_crea_admin PASSED                   [ 55%]
+tests/test_roles.py::test_admin_no_edita_superadmin PASSED               [ 57%]
+tests/test_roles.py::test_admin_cannot_edit_superadmin PASSED            [ 59%]
+tests/test_roles.py::test_admin_cannot_delete_superadmin PASSED          [ 61%]
+tests/test_roles.py::test_superadmin_can_delete_user PASSED              [ 63%]
+tests/test_roles.py::test_solicitante_ve_solo_sus_requisiciones PASSED   [ 65%]
+tests/test_usuarios.py::test_superadmin_can_create_any_user PASSED       [ 68%]
+tests/test_usuarios.py::test_admin_can_create_only_allowed_roles PASSED  [ 70%]
+tests/test_usuarios.py::test_admin_cannot_create_admin_or_superadmin PASSED [ 72%]
+tests/test_usuarios.py::test_admin_cannot_edit_superadmin PASSED         [ 74%]
+tests/test_usuarios.py::test_admin_cannot_delete_superadmin PASSED       [ 76%]
+tests/test_usuarios.py::test_superadmin_can_delete_user PASSED           [ 78%]
+tests/test_usuarios.py::test_crear_usuario PASSED                        [ 80%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/] PASSED               [ 82%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/login] PASSED          [ 85%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/logout] PASSED         [ 87%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/dashboard] PASSED      [ 89%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/requisiciones] PASSED  [ 91%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/requisiciones/historial] PASSED [ 93%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/requisiciones/pendientes_cotizar] PASSED [ 95%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/requisiciones/cotizadas] PASSED [ 97%]
+tests/test_vistas.py::test_vistas_basicas_cargan[/admin/usuarios] PASSED [100%]
+
+====================== 47 passed, 115 warnings in 18.48s =======================

@@ -62,9 +62,7 @@ class Usuario(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         if not self.password_hash:
             return False
-        if self.password_hash.startswith("pbkdf2:"):
-            return check_password_hash(self.password_hash, password)
-        return self.password_hash == password
+        return check_password_hash(self.password_hash, password)
 
     def __repr__(self) -> str:  # pragma: no cover - representation
         return f"<Usuario {self.username}>"
@@ -85,6 +83,7 @@ class Requisicion(db.Model):
     estado = db.Column(db.String(50), nullable=False)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     url_pdf_drive = db.Column(db.String(200))
+    comentario_estado = db.Column(db.Text, nullable=True)
 
     departamento_obj = db.relationship("Departamento")
     creador_obj = db.relationship("Usuario")
@@ -158,6 +157,10 @@ class AdminVirtual(UserMixin):
         self.username = "admin"
         self.superadmin = True
         self.session_token = None
+        # Simular un rol asignado para compatibilidad con vistas y tests
+        class RolVirtual:
+            nombre = "Admin"
+        self.rol_asignado = RolVirtual()
 
     def __repr__(self) -> str:  # pragma: no cover - representation
         return "<AdminVirtual 0>"

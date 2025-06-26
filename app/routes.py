@@ -52,6 +52,9 @@ from .forms import (
     UserForm,
     EditUserForm,
     ConfirmarEliminarUsuarioForm,
+    RequisicionForm,
+    CambiarEstadoForm,  # <--- Importar el formulario necesario
+    ConfirmarEliminarForm
 )
 # Requisition forms are no longer imported here
 # from .requisiciones.forms import (...)
@@ -357,16 +360,17 @@ def crear_requisicion():
             
     if form.validate_on_submit():
         # Pasar el formulario validado y el ID del usuario al servicio
-        nueva_requisicion = requisicion_service.crear_nueva_requisicion(form, current_user.id)
+        nueva_requisicion, mensaje = requisicion_service.crear_nueva_requisicion(form, current_user.id)
+        if mensaje:
+            flash(mensaje, 'success' if nueva_requisicion else 'danger')
         if nueva_requisicion:
-            # El servicio ya maneja el flash y el logging
             return redirect(url_for('main.requisicion_creada', requisicion_id=nueva_requisicion.id))
         # Si hay error, el servicio ya mostró un flash, simplemente re-renderizar el template
         # con los errores del formulario si los hubiera (aunque el servicio también flashea errores generales)
     
     productos_sugerencias = obtener_sugerencias_productos() # Esto puede quedar aquí si es solo para el template
     return render_template(
-        'crear_requisicion.html',
+        'requisiciones/crear_requisicion.html',
         form=form,
         departamentos=departamentos, # Se sigue pasando para la populación inicial si es necesario
         title="Crear Nueva Requisición",
@@ -446,10 +450,11 @@ def historial_requisiciones():
 def ver_requisicion(requisicion_id):
     try:
         # Usar el servicio para obtener la requisición y manejar si no se encuentra
-        requisicion = requisicion_service.obtener_requisicion_por_id(requisicion_id)
-        if requisicion is None:
-            # El servicio ya habrá flasheado un mensaje
-            return redirect(url_for('main.listar_requisiciones'))
+        requisicion, mensaje = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+        if mensaje:
+            flash(mensaje, 'danger')
+        if not requisicion:
+            return redirect(url_for('main.requisiciones'))
     except Exception as e: # Captura errores de DB u otros al obtener
         app.logger.error(f"Error al obtener requisición {requisicion_id} en la ruta: {str(e)}", exc_info=True)
         flash('Error grave al intentar cargar la requisición.', 'danger')
@@ -485,10 +490,9 @@ def ver_requisicion(requisicion_id):
         comentario_ingresado = form_estado.comentario_estado.data.strip() if form_estado.comentario_estado.data else None
 
         # Llamar al servicio para cambiar el estado
-        if requisicion_service.cambiar_estado(requisicion.id, nuevo_estado_solicitado, comentario_ingresado, current_user):
-            # El servicio maneja los mensajes flash de éxito/error
-            pass # Simplemente redirigir
-        # Si el cambio falla, el servicio ya flasheó el error.
+        ok, mensaje = requisicion_service.cambiar_estado(requisicion.id, nuevo_estado_solicitado, comentario_ingresado, current_user)
+        if mensaje:
+            flash(mensaje, 'success' if ok else 'danger')
         return redirect(url_for('main.ver_requisicion', requisicion_id=requisicion.id))
 
     # Obtener permisos de edición/eliminación del servicio
@@ -523,9 +527,11 @@ def ver_requisicion(requisicion_id):
 @main.route('/requisicion/<int:requisicion_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_requisicion(requisicion_id):
-    requisicion_a_editar = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+    requisicion_a_editar, mensaje = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+    if mensaje:
+        flash(mensaje, 'danger')
     if not requisicion_a_editar:
-        return redirect(url_for('main.listar_requisiciones')) # Servicio ya flasheó
+        return redirect(url_for('main.requisiones')) # Servicio ya flasheó
 
     permisos = requisicion_service.get_permisos_y_estado_edicion(requisicion_a_editar, current_user)
     if not permisos['puede_editar']:
@@ -562,6 +568,7 @@ def editar_requisicion(requisicion_id):
         form=form,
         title=f"Editar Requisición {requisicion_a_editar.numero_requisicion}",
         requisicion_id=requisicion_a_editar.id,
+        requisicion=requisicion_a_editar,
         unidades_sugerencias=UNIDADES_DE_MEDIDA_SUGERENCIAS,
         productos_sugerencias=productos_sugerencias
     )
@@ -569,7 +576,7 @@ def editar_requisicion(requisicion_id):
 @main.route('/requisicion/<int:requisicion_id>/confirmar_eliminar')
 @login_required
 def confirmar_eliminar_requisicion(requisicion_id):
-    requisicion = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+    requisicion, mensaje = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
     if not requisicion:
         return redirect(url_for('main.listar_requisiciones'))
 
@@ -594,9 +601,9 @@ def eliminar_requisicion_post(requisicion_id):
         flash('Petición inválida o token CSRF faltante/incorrecto.', 'danger')
         return redirect(url_for('main.confirmar_eliminar_requisicion', requisicion_id=requisicion_id))
 
-    requisicion_a_eliminar = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
+    requisicion_a_eliminar, mensaje = requisicion_service.obtener_requisicion_por_id(requisicion_id, check_incomplete=False)
     if not requisicion_a_eliminar: # Doble chequeo por si acaso
-        return redirect(url_for('main.listar_requisiciones'))
+        return redirect(url_for('main.listar_requisiones'))
 
     permisos = requisicion_service.get_permisos_y_estado_edicion(requisicion_a_eliminar, current_user)
     if not permisos['puede_eliminar']: # Chequeo de permiso de nuevo en POST por seguridad
@@ -686,7 +693,7 @@ def imprimir_requisicion(requisicion_id):
         # Si obtener_requisicion_por_id retorna None y flashea, esto es redundante.
         # Si retorna None sin flashear, entonces flash aquí o abort(404).
         # Por ahora, asumimos que el servicio flasheó si retorna None.
-        return redirect(url_for('main.listar_requisiciones'))
+        return redirect(url_for('main.listar_requisiones'))
 
     try:
         pdf_data = generar_pdf_requisicion(requisicion) # Esta utilidad puede permanecer aquí si es puramente de generación de PDF
@@ -707,13 +714,4 @@ def imprimir_requisicion(requisicion_id):
 def internal_server_error(error):
     """Maneja errores 500 mostrando una página amigable y registrando el error."""
     app.logger.error(f"Error Interno del Servidor (500): {error}", exc_info=True) # Log más descriptivo
-    # Considerar hacer rollback de la sesión de DB aquí si el error pudo dejarla en un estado inconsistente.
-    # Esto es especialmente importante si el error ocurrió durante una transacción.
-    # from app import db # Importar db aquí para evitar importación circular si no está ya importado globalmente en este punto.
-    # try:
-    #     db.session.rollback()
-    #     app.logger.info("Rollback de sesión de DB exitoso tras error 500.")
-    # except Exception as e_rollback:
-    #     app.logger.error(f"Error durante el rollback de sesión de DB tras error 500: {e_rollback}", exc_info=True)
-
     return render_template('500.html', title='Error Interno del Servidor'), 500

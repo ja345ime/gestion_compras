@@ -17,3 +17,4 @@ Flask-Migrate
 psycopg2-binary
 pytz
 openai>=1.0
+pytest-mock

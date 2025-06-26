@@ -1,0 +1,29 @@
+<!-- Dummy para tests: Confirmar eliminación de requisición -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmar Eliminación</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul id="flash-messages">
+        {% for category, message in messages %}
+          <li class="flash-{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <h1>Confirmar Eliminación de Requisición</h1>
+    {% if requisicion %}
+        <p>Número: {{ requisicion.numero_requisicion }}</p>
+    {% else %}
+        <p>No hay requisición.</p>
+    {% endif %}
+    <form method="post">
+        {{ form.hidden_tag() }}
+        {{ form.submit() }}
+    </form>
+</body>
+</html>
