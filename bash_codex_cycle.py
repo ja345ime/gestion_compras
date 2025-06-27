@@ -5,7 +5,7 @@ import os
 import time
 from pathlib import Path
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 import subprocess
 
 COMANDOS_FILE = Path("/tmp/comandos_codex.sh")
@@ -18,7 +18,7 @@ ULTIMO_ERROR_FILE = Path("/tmp/ultimo_error_bash_codex.txt")
 # Configuración de OpenAI
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else OpenAI()
 
 def ejecutar_bash():
     if not COMANDOS_FILE.exists():
@@ -96,14 +96,13 @@ def analizar_error_con_chatgpt(error_texto, contexto, comando_actual):
     )
     usuario_msg = f"Contexto:\n{contexto}\n\nComando ejecutado:\n{comando_actual}\n\nError bash:\n{error_texto}\n\nAnaliza el error y sugiere un comando bash corregido."
     try:
-        respuesta = openai.ChatCompletion.create(
+        respuesta = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": sistema_msg},
                 {"role": "user", "content": usuario_msg}
             ]
         )
-
         texto = respuesta.choices[0].message.content.strip()
         # Intentar extraer JSON
         import json
