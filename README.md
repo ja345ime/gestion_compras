@@ -105,3 +105,15 @@ with app.app_context():
 Ejecuta `backup_daily.sh` desde cron para guardar un volcado de la base de datos
 en la carpeta definida por `BACKUP_DIR` (por defecto `/backups`). El resultado de
 cada respaldo se registra en `backup.log`.
+
+## ⚡ Automatización y validación de cambios con Codex
+
+A partir de la versión 2025-06, la automatización de validaciones y pruebas de cambios en el código se realiza exclusivamente mediante el script `codex_script_servidor.py`.
+
+- **No utilices ni modifiques los scripts antiguos** (`automatizador_codex.py`, `supervisor_codex.py`, `api_codex.py`) ni los archivos de estado como `prompt_actual.txt`, `siguiente_prompt.txt`, etc. Todos han sido eliminados del flujo.
+- El proceso automatizado funciona así:
+  1. N8n o el agente externo escribe el prompt en `/tmp/prompt.txt`.
+  2. Se ejecuta `codex_script_servidor.py`, que corre las pruebas y escribe el resultado en `/tmp/estado.txt` (`OK` o `ERROR`). Si hay error, el detalle se guarda en `/tmp/falla.txt`.
+  3. N8n lee estos archivos y toma decisiones según el resultado.
+- **IMPORTANTE:** Este script debe ejecutarse solo en entornos de desarrollo o staging, nunca en producción.
+- Es obligatorio definir la variable de entorno `OPENAI_API_KEY` para la integración con OpenAI.
