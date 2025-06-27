@@ -27,19 +27,19 @@ def ejecutar_bash():
         print(salida)
         RESULTADO_FILE.write_text(salida, encoding="utf-8")
         if resultado.returncode != 0:
-            ERROR_FILE.write_text(salida, encoding="utf-8")
             ESTADO_FILE.write_text("ERROR", encoding="utf-8")
+            ERROR_FILE.write_text(salida, encoding="utf-8")
             print(f"❌ Error al ejecutar bash. Código: {resultado.returncode}")
         else:
+            ESTADO_FILE.write_text("OK", encoding="utf-8")
             if ERROR_FILE.exists():
                 ERROR_FILE.unlink()
-            ESTADO_FILE.write_text("OK", encoding="utf-8")
             print("✅ Comando bash ejecutado correctamente.")
     except Exception as e:
         error_msg = str(e)
         print(error_msg)
-        ERROR_FILE.write_text(error_msg, encoding="utf-8")
         ESTADO_FILE.write_text("ERROR", encoding="utf-8")
+        ERROR_FILE.write_text(error_msg, encoding="utf-8")
 
 if __name__ == "__main__":
     ejecutar_bash()
