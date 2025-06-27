@@ -1,16 +1,16 @@
-2025-06-27 19:13:35,111 [INFO] ===== Verificando entorno =====
-2025-06-27 19:13:35,119 [INFO] Proceso gunicorn activo: 42109 gunicorn
-42112 gunicorn
-42113 gunicorn
-42114 gunicorn
-2025-06-27 19:13:35,127 [INFO] Proceso flask no encontrado
-2025-06-27 19:13:35,135 [INFO] Proceso nginx activo: 720 nginx
+2025-06-27 20:02:01,139 [INFO] ===== Verificando entorno =====
+2025-06-27 20:02:01,149 [INFO] Proceso gunicorn activo: 45417 gunicorn
+45420 gunicorn
+45421 gunicorn
+45422 gunicorn
+2025-06-27 20:02:01,158 [INFO] Proceso flask no encontrado
+2025-06-27 20:02:01,168 [INFO] Proceso nginx activo: 720 nginx
 723 nginx
-2025-06-27 19:13:35,136 [INFO] El puerto 8000 está libre
-2025-06-27 19:13:35,136 [INFO] Se encontró codex_api.service en /etc/systemd/system/codex_api.service
-2025-06-27 19:13:35,151 [INFO] × codex_api.service - codex API Gunicorn Service
+2025-06-27 20:02:01,168 [INFO] El puerto 8000 está libre
+2025-06-27 20:02:01,168 [INFO] Se encontró codex_api.service en /etc/systemd/system/codex_api.service
+2025-06-27 20:02:01,182 [INFO] × codex_api.service - codex API Gunicorn Service
      Loaded: loaded (/etc/systemd/system/codex_api.service; enabled; vendor preset: enabled)
-     Active: failed (Result: exit-code) since Thu 2025-06-26 21:01:12 UTC; 22h ago
+     Active: failed (Result: exit-code) since Thu 2025-06-26 21:01:12 UTC; 23h ago
    Main PID: 649 (code=exited, status=3)
         CPU: 5.992s
 
@@ -25,10 +25,10 @@ Jun 26 21:01:12 granja-losmolinos-app systemd[1]: codex_api.service: Main proces
 Jun 26 21:01:12 granja-losmolinos-app systemd[1]: codex_api.service: Failed with result 'exit-code'.
 Jun 26 21:01:12 granja-losmolinos-app systemd[1]: codex_api.service: Consumed 5.992s CPU time.
 
-2025-06-27 19:13:35,151 [WARNING] codex_api.service no está activo
-2025-06-27 19:13:35,151 [INFO] Escribiendo archivo de servicio en /etc/systemd/system/codex_api.service
-2025-06-27 19:13:36,506 [INFO] Gunicorn reiniciado
-2025-06-27 19:13:36,525 [INFO] Logs recientes de codex_api.service:
+2025-06-27 20:02:01,183 [WARNING] codex_api.service no está activo
+2025-06-27 20:02:01,183 [INFO] Escribiendo archivo de servicio en /etc/systemd/system/codex_api.service
+2025-06-27 20:02:02,638 [INFO] Gunicorn reiniciado
+2025-06-27 20:02:02,663 [INFO] Logs recientes de codex_api.service:
 Jun 26 21:01:07 granja-losmolinos-app gunicorn[746]:   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
 Jun 26 21:01:07 granja-losmolinos-app gunicorn[746]:   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
 Jun 26 21:01:07 granja-losmolinos-app gunicorn[746]:   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed

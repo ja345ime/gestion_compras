@@ -70,7 +70,7 @@ def analizar_error_con_chatgpt(error_texto, contexto):
         )
         comando = respuesta.choices[0].message.content.strip()
         # Limpiar posibles markdown
-        if comando.startswith("```) and comando.endswith("```"):
+        if comando.startswith("```") and comando.endswith("```"):
             comando = comando.strip("`\n ")
         return comando
     except Exception as e:
