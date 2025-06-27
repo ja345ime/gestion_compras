@@ -1,6 +1,10 @@
+El archivo __init__.py debe incluir el registro del blueprint de webhook de Telegram si existe app/webhook_telegram.py, usando:
 
-Último error detectado en pytest:
+    from .webhook_telegram import telegram_bp
+    app.register_blueprint(telegram_bp)
 
+Además, asegúrate de que todos los imports estén ordenados, y que la lógica de `create_app()` sea estable para pruebas y producción.
 
+El archivo webhook_telegram.py define un blueprint para recibir y procesar mensajes de Telegram. El bot ya tiene un token y un webhook configurado.
 
-Analiza el error, sugiere cómo corregirlo, aplica el cambio, y vuelve a ejecutar las pruebas. Solo corrige ese fallo.
+El sistema ya pasó todas las pruebas Pytest después de corregir errores de mocking, validaciones de formularios y lógica de usuario. Solo se deben mantener los cambios estables y verificar que todo funcione correctamente en producción.
