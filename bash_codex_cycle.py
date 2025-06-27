@@ -150,6 +150,19 @@ def hay_conflictos_merge(stdout=None, stderr=None):
         print(f"Error comprobando conflictos de merge: {e}")
         return False
 
+def forzar_rama_git(comando):
+    # Si es git pull o git push, forzar la rama pruebas/refactor-requisiciones
+    import re
+    # Reemplazar cualquier git pull ... por git pull origin pruebas/refactor-requisiciones
+    if comando.strip().startswith("git pull"):
+        return "git pull origin pruebas/refactor-requisiciones"
+    # Reemplazar cualquier git push ... por git push origin pruebas/refactor-requisiciones
+    if comando.strip().startswith("git push"):
+        return "git push origin pruebas/refactor-requisiciones"
+    # Si hay referencia a main, master u otra rama, reemplazar por pruebas/refactor-requisiciones
+    comando = re.sub(r'\b(main|master|develop|dev|staging|production)\b', 'pruebas/refactor-requisiciones', comando)
+    return comando
+
 def ciclo_bash_codex(max_intentos=5):
     intentos = 0
     while intentos < max_intentos:
@@ -194,7 +207,9 @@ def ciclo_bash_codex(max_intentos=5):
         if nuevo_comando.strip() == comando_actual.strip():
             print("🔁 El comando sugerido es igual al anterior. No se reintenta.")
             break
-        COMANDOS_FILE.write_text(nuevo_comando.strip() + "\n", encoding="utf-8")
+        # Forzar rama para comandos git antes de guardar
+        nuevo_comando_forzado = forzar_rama_git(nuevo_comando.strip())
+        COMANDOS_FILE.write_text(nuevo_comando_forzado + "\n", encoding="utf-8")
         guardar_ultimo_error(error_texto)
         intentos += 1
         time.sleep(2)
