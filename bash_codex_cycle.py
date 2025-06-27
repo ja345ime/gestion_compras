@@ -42,12 +42,17 @@ def ejecutar_bash():
         )
         print("STDOUT:\n" + (resultado.stdout or ""))
         print("STDERR:\n" + (resultado.stderr or ""))
+        # Detectar si el comando contiene bypass de error
+        bypass = False
+        if '|| echo' in comandos or '> /dev/null' in comandos or '2>&1' in comandos:
+            bypass = True
         if resultado.returncode == 0:
             ESTADO_FILE.write_text("OK", encoding="utf-8")
             if ERROR_FILE.exists():
                 ERROR_FILE.unlink()
             return True
         else:
+            # Si hay bypass, no marcar como OK aunque el comando "oculte" el error
             ESTADO_FILE.write_text("ERROR", encoding="utf-8")
             error_out = resultado.stderr if resultado.stderr else resultado.stdout
             ERROR_FILE.write_text(error_out, encoding="utf-8")
