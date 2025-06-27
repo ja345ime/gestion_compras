@@ -25,13 +25,13 @@ def ejecutar_bash():
         print(f"No existe {COMANDOS_FILE}, nada que ejecutar.")
         ESTADO_FILE.write_text("ERROR", encoding="utf-8")
         ERROR_FILE.write_text("No existe /tmp/comandos_codex.sh", encoding="utf-8")
-        return False
+        return False, None, None
     comandos = COMANDOS_FILE.read_text(encoding="utf-8").strip()
     if not comandos:
         print("El archivo de comandos está vacío.")
         ESTADO_FILE.write_text("ERROR", encoding="utf-8")
         ERROR_FILE.write_text("El archivo de comandos está vacío.", encoding="utf-8")
-        return False
+        return False, None, None
     try:
         resultado = subprocess.run(
             comandos,
@@ -50,18 +50,17 @@ def ejecutar_bash():
             ESTADO_FILE.write_text("OK", encoding="utf-8")
             if ERROR_FILE.exists():
                 ERROR_FILE.unlink()
-            return True
+            return True, resultado.stdout, resultado.stderr
         else:
-            # Si hay bypass, no marcar como OK aunque el comando "oculte" el error
             ESTADO_FILE.write_text("ERROR", encoding="utf-8")
             error_out = resultado.stderr if resultado.stderr else resultado.stdout
             ERROR_FILE.write_text(error_out, encoding="utf-8")
-            return False
+            return False, resultado.stdout, resultado.stderr
     except Exception as e:
         print(f"Excepción al ejecutar bash: {e}")
         ESTADO_FILE.write_text("ERROR", encoding="utf-8")
         ERROR_FILE.write_text(str(e), encoding="utf-8")
-        return False
+        return False, None, None
 
 def leer_contexto():
     if CONTEXT_FILE.exists():
@@ -128,9 +127,14 @@ def analizar_error_con_chatgpt(error_texto, contexto, comando_actual):
 def guardar_prompt(analisis):
     PROMPT_BASH_FILE.write_text(analisis, encoding="utf-8")
 
-def hay_conflictos_merge():
+def hay_conflictos_merge(stdout=None, stderr=None):
+    # Detectar conflicto por salida de git pull
+    if stdout and "CONFLICT" in stdout:
+        return True
+    if stderr and "CONFLICT" in stderr:
+        return True
+    # Detectar conflicto por git status --porcelain
     try:
-        import subprocess
         resultado = subprocess.run(
             ["git", "status", "--porcelain"],
             capture_output=True,
@@ -141,14 +145,6 @@ def hay_conflictos_merge():
         for linea in resultado.stdout.splitlines():
             if linea.startswith(("UU", "AA", "DD")):
                 return True
-        # También buscar palabras clave en git status normal
-        resultado2 = subprocess.run(
-            ["git", "status"],
-            capture_output=True,
-            text=True
-        )
-        if any(palabra in resultado2.stdout for palabra in ["Unmerged paths", "both added", "CONFLICT"]):
-            return True
         return False
     except Exception as e:
         print(f"Error comprobando conflictos de merge: {e}")
@@ -158,18 +154,18 @@ def ciclo_bash_codex(max_intentos=5):
     intentos = 0
     while intentos < max_intentos:
         print(f"\n--- Intento #{intentos+1} ---")
-        # Revisar conflictos de merge antes de ejecutar
-        if hay_conflictos_merge():
+        comando_actual = leer_comando()
+        exito, stdout, stderr = ejecutar_bash()
+        estado = ESTADO_FILE.read_text(encoding="utf-8").strip() if ESTADO_FILE.exists() else ""
+        # Si el comando fue git pull y hay conflicto, detener ciclo
+        if "git pull" in comando_actual and hay_conflictos_merge(stdout, stderr):
             msg = "Merge conflict detected. Please resolve manually before continuing."
             ERROR_FILE.write_text(msg, encoding="utf-8")
             ESTADO_FILE.write_text("ERROR", encoding="utf-8")
             print(f"❌ {msg}")
             break
-        comando_actual = leer_comando()
-        exito = ejecutar_bash()
-        estado = ESTADO_FILE.read_text(encoding="utf-8").strip() if ESTADO_FILE.exists() else ""
-        # Si el comando fue git pull, revisar conflictos después de ejecutar
-        if comando_actual.strip().startswith("git pull") and hay_conflictos_merge():
+        # Si hay conflicto de merge por status, detener ciclo
+        if hay_conflictos_merge():
             msg = "Merge conflict detected. Please resolve manually before continuing."
             ERROR_FILE.write_text(msg, encoding="utf-8")
             ESTADO_FILE.write_text("ERROR", encoding="utf-8")
