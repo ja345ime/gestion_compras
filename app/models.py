@@ -48,7 +48,7 @@ class Usuario(UserMixin, db.Model):
     nombre_completo = db.Column(db.String(100), nullable=False)
     cedula = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(512), nullable=False)
     activo = db.Column(db.Boolean, default=True)
     superadmin = db.Column(db.Boolean, default=False)
     rol_id = db.Column(db.Integer, db.ForeignKey("rol.id"), nullable=False)

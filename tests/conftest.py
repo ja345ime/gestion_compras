@@ -1,114 +1,20 @@
-import os
 import pytest
-from uuid import uuid4
+from app import create_app, db
+from config import Config
+import os
 
-# Configurar password de administrador para pruebas
-os.environ.setdefault("ADMIN_PASSWORD", "admin123")
+class TestConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-from app import app as flask_app, db, crear_datos_iniciales
-from app.models import Usuario, Rol, Departamento, Requisicion
+@pytest.fixture(scope='module')
+def test_client():
+    flask_app = create_app(config_class=TestConfig)
 
-
-def crear_usuario(username: str, rol_nombre: str, password: str = "test") -> Usuario:
-    """Helper para crear usuarios durante las pruebas."""
-    rol = Rol.query.filter_by(nombre=rol_nombre).first()
-    if not rol:
-        rol = Rol(nombre=rol_nombre, descripcion=f"Rol {rol_nombre}")
-        db.session.add(rol)
-        db.session.commit()
-
-    departamento = Departamento.query.first()
-    if not departamento:
-        departamento = Departamento(nombre=f"Dept-{uuid4().hex[:6]}")
-        db.session.add(departamento)
-        db.session.commit()
-
-    usuario = Usuario(
-        username=username,
-        cedula=f"V{uuid4().hex[:6]}",
-        email=f"{username}_{uuid4().hex[:4]}@example.com",
-        nombre_completo=username.capitalize(),
-        rol_id=rol.id,
-        departamento_id=departamento.id,
-        activo=True,
-    )
-    usuario.set_password(password)
-    db.session.add(usuario)
-    db.session.commit()
-    return usuario
-
-
-@pytest.fixture
-def app():
-    """Instancia de la aplicación configurada para pruebas."""
-    flask_app.config.update(
-        TESTING=True,
-        WTF_CSRF_ENABLED=False,
-        SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
-        SQLALCHEMY_ENGINE_OPTIONS={"connect_args": {"check_same_thread": False}},
-    )
-    with flask_app.app_context():
-        db.create_all()
-        crear_datos_iniciales(Rol, Departamento, Usuario)
-    yield flask_app
-    with flask_app.app_context():
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
-
-
-@pytest.fixture
-def setup_db(app):
-    """Crea y limpia la base de datos para cada prueba."""
-    with app.app_context():
-        db.create_all()
-        crear_datos_iniciales(Rol, Departamento, Usuario)
-        yield
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture
-def admin_user(app, setup_db):
-    with app.app_context():
-        usuario = Usuario.query.filter_by(username="admin").first()
-        if usuario:
-            return usuario
-        return crear_usuario("admin", "Admin", password="admin123")
-
-
-@pytest.fixture
-def compras_user(app, setup_db):
-    with app.app_context():
-        usuario = Usuario.query.filter_by(username="compras_test").first()
-        if usuario:
-            return usuario
-        return crear_usuario("compras_test", "Compras")
-
-
-@pytest.fixture
-def historial(app, setup_db, admin_user):
-    """Lista de requisiciones en estado Finalizada o Rechazada."""
-    with app.app_context():
-        requisiciones = []
-        for estado in ["Finalizada", "Rechazada"]:
-            req = Requisicion(
-                numero_requisicion=f"RQH{uuid4().hex[:6]}",
-                nombre_solicitante=admin_user.nombre_completo,
-                cedula_solicitante=admin_user.cedula,
-                correo_solicitante=admin_user.email,
-                departamento_id=admin_user.departamento_id,
-                prioridad="Media",
-                observaciones="historial",
-                creador_id=admin_user.id,
-                estado=estado,
-            )
-            db.session.add(req)
-            requisiciones.append(req)
-        db.session.commit()
-        return requisiciones
-
+    # Create a test client using the Flask application configured for testing
+    with flask_app.test_client() as testing_client:
+        with flask_app.app_context():
+            db.create_all()
+            yield testing_client
+            db.drop_all()

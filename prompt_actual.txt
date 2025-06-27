@@ -1,9 +1,6 @@
-PROMPT_PATH = Path(__file__).parent / 'prompt_actual.txt'
-CONTEXT_PATH = Path(__file__).parent / 'contexto_codex.txt'
 
-prompt_text = ''
-if CONTEXT_PATH.exists():
-    prompt_text += CONTEXT_PATH.read_text(encoding='utf-8') + '\n\n'
+Último error detectado en pytest:
 
-prompt_text += PROMPT_PATH.read_text(encoding='utf-8')
 
+
+Analiza el error, sugiere cómo corregirlo, aplica el cambio, y vuelve a ejecutar las pruebas. Solo corrige ese fallo.
