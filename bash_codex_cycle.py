@@ -14,6 +14,9 @@ ERROR_FILE = Path("/tmp/error_bash_codex.txt")
 CONTEXT_FILE = Path("/tmp/contexto.txt")
 PROMPT_BASH_FILE = Path("/tmp/prompt_codex_bash.txt")
 ULTIMO_ERROR_FILE = Path("/tmp/ultimo_error_bash_codex.txt")
+RAMA_ACTUAL_FILE = Path("/tmp/rama_actual.txt")
+RAMAS_REMOTAS_FILE = Path("/tmp/ramas_remotas.txt")
+README_TMP_FILE = Path("/tmp/lectura_readme.txt")
 
 # Configuración de OpenAI
 load_dotenv()
@@ -90,15 +93,53 @@ def limpiar_ultimo_error():
     if ULTIMO_ERROR_FILE.exists():
         ULTIMO_ERROR_FILE.unlink()
 
+def guardar_contexto_git():
+    # Guardar rama actual
+    try:
+        subprocess.run("git branch --show-current > /tmp/rama_actual.txt", shell=True, check=False)
+    except Exception as e:
+        print(f"No se pudo guardar rama actual: {e}")
+    # Guardar ramas remotas
+    try:
+        subprocess.run("git branch -r > /tmp/ramas_remotas.txt", shell=True, check=False)
+    except Exception as e:
+        print(f"No se pudo guardar ramas remotas: {e}")
+    # Guardar README.md
+    try:
+        if Path("README.md").exists():
+            subprocess.run("cat README.md > /tmp/lectura_readme.txt", shell=True, check=False)
+        else:
+            README_TMP_FILE.write_text("(No existe README.md)", encoding="utf-8")
+    except Exception as e:
+        print(f"No se pudo guardar README.md: {e}")
+
+def leer_contexto_git():
+    rama_actual = RAMA_ACTUAL_FILE.read_text(encoding="utf-8") if RAMA_ACTUAL_FILE.exists() else ""
+    ramas_remotas = RAMAS_REMOTAS_FILE.read_text(encoding="utf-8") if RAMAS_REMOTAS_FILE.exists() else ""
+    lectura_readme = README_TMP_FILE.read_text(encoding="utf-8") if README_TMP_FILE.exists() else ""
+    return rama_actual, ramas_remotas, lectura_readme
+
 def analizar_error_con_chatgpt(error_texto, contexto, comando_actual):
+    rama_actual, ramas_remotas, lectura_readme = leer_contexto_git()
     sistema_msg = (
-        "Eres un experto en bash y administración de sistemas Linux. "
-        "Recibirás el error de un comando bash, el contexto técnico del sistema y el comando ejecutado. "
+        "Eres un experto en bash, git y administración de sistemas Linux. "
+        "Recibirás el error de un comando bash, el contexto técnico del sistema, el comando ejecutado, la rama git actual, las ramas remotas y el contenido del README. "
         "Tu tarea es analizar la causa y proponer un nuevo comando bash corregido. "
+        "Siempre debes preferir la rama 'pruebas/refactor-requisiciones' para cualquier comando git. "
+        "Si la rama no existe en las ramas remotas, sugiere crearla desde la rama actual. "
+        "Nunca uses <rama> literal, siempre asume 'pruebas/refactor-requisiciones'. "
         "Primero, razona brevemente la causa y solución. Luego, sugiere SOLO el nuevo comando bash corregido. "
         "Responde en formato JSON con las claves 'analisis' y 'comando'."
     )
-    usuario_msg = f"Contexto:\n{contexto}\n\nComando ejecutado:\n{comando_actual}\n\nError bash:\n{error_texto}\n\nAnaliza el error y sugiere un comando bash corregido."
+    usuario_msg = (
+        f"Contexto general:\n{contexto}\n\n"
+        f"Comando ejecutado:\n{comando_actual}\n\n"
+        f"Error bash:\n{error_texto}\n\n"
+        f"Rama git actual:\n{rama_actual}\n\n"
+        f"Ramas remotas:\n{ramas_remotas}\n\n"
+        f"README.md:\n{lectura_readme}\n\n"
+        "Recuerda: siempre usa la rama 'pruebas/refactor-requisiciones' para cualquier comando git."
+    )
     try:
         respuesta = client.chat.completions.create(
             model="gpt-4o",
@@ -167,6 +208,7 @@ def ciclo_bash_codex(max_intentos=5):
     intentos = 0
     while intentos < max_intentos:
         print(f"\n--- Intento #{intentos+1} ---")
+        guardar_contexto_git()
         comando_actual = leer_comando()
         exito, stdout, stderr = ejecutar_bash()
         estado = ESTADO_FILE.read_text(encoding="utf-8").strip() if ESTADO_FILE.exists() else ""
