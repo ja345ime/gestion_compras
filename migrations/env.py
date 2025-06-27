@@ -3,7 +3,7 @@ import logging
 from logging.config import fileConfig
 
 from alembic import context
-from flask import current_app
+from app import create_app, db
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,10 +20,12 @@ logger = logging.getLogger('alembic.env')
 # target_metadata = mymodel.Base.metadata
 from app import db
 
-config.set_main_option(
-    'sqlalchemy.url',
-    str(current_app.extensions['migrate'].db.engine.url).replace('%', '%%')
-)
+app = create_app()
+with app.app_context():
+    config.set_main_option(
+        'sqlalchemy.url',
+        str(db.engine.url).replace('%', '%%')
+    )
 
 target_metadata = db.metadata
 
@@ -32,7 +34,7 @@ def run_migrations_offline():
     """Run migrations in 'offline' mode."""
 
     context.configure(
-        url=str(current_app.extensions['migrate'].db.engine.url).replace('%', '%%'),
+        str(db.engine.url).replace('%', '%%'),
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,
@@ -45,17 +47,19 @@ def run_migrations_offline():
 def run_migrations_online():
     """Run migrations in 'online' mode."""
 
-    connectable = current_app.extensions['migrate'].db.engine
+    with app.app_context():
+        connectable = db.engine
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-        )
 
-        with context.begin_transaction():
-            context.run_migrations()
+        with connectable.connect() as connection:
+            context.configure(
+                connection=connection,
+                target_metadata=target_metadata,
+                compare_type=True,
+            )
+
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():
