@@ -128,13 +128,53 @@ def analizar_error_con_chatgpt(error_texto, contexto, comando_actual):
 def guardar_prompt(analisis):
     PROMPT_BASH_FILE.write_text(analisis, encoding="utf-8")
 
+def hay_conflictos_merge():
+    try:
+        import subprocess
+        resultado = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True
+        )
+        if resultado.returncode != 0:
+            return False
+        for linea in resultado.stdout.splitlines():
+            if linea.startswith(("UU", "AA", "DD")):
+                return True
+        # También buscar palabras clave en git status normal
+        resultado2 = subprocess.run(
+            ["git", "status"],
+            capture_output=True,
+            text=True
+        )
+        if any(palabra in resultado2.stdout for palabra in ["Unmerged paths", "both added", "CONFLICT"]):
+            return True
+        return False
+    except Exception as e:
+        print(f"Error comprobando conflictos de merge: {e}")
+        return False
+
 def ciclo_bash_codex(max_intentos=5):
     intentos = 0
     while intentos < max_intentos:
         print(f"\n--- Intento #{intentos+1} ---")
+        # Revisar conflictos de merge antes de ejecutar
+        if hay_conflictos_merge():
+            msg = "Merge conflict detected. Please resolve manually before continuing."
+            ERROR_FILE.write_text(msg, encoding="utf-8")
+            ESTADO_FILE.write_text("ERROR", encoding="utf-8")
+            print(f"❌ {msg}")
+            break
         comando_actual = leer_comando()
         exito = ejecutar_bash()
         estado = ESTADO_FILE.read_text(encoding="utf-8").strip() if ESTADO_FILE.exists() else ""
+        # Si el comando fue git pull, revisar conflictos después de ejecutar
+        if comando_actual.strip().startswith("git pull") and hay_conflictos_merge():
+            msg = "Merge conflict detected. Please resolve manually before continuing."
+            ERROR_FILE.write_text(msg, encoding="utf-8")
+            ESTADO_FILE.write_text("ERROR", encoding="utf-8")
+            print(f"❌ {msg}")
+            break
         if exito and estado == "OK":
             print("✅ Comando bash ejecutado correctamente.")
             limpiar_ultimo_error()
