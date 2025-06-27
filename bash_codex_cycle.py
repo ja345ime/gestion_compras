@@ -258,5 +258,61 @@ def ciclo_bash_codex(max_intentos=5):
     else:
         print("❌ Se alcanzó el máximo de intentos sin éxito.")
 
+def generar_comandos_desde_prompt():
+    # Solo generar si prompt existe y comandos no existen o están vacíos
+    if not PROMPT_BASH_FILE.exists() or not PROMPT_BASH_FILE.read_text(encoding="utf-8").strip():
+        return False
+    if COMANDOS_FILE.exists() and COMANDOS_FILE.read_text(encoding="utf-8").strip():
+        return False
+    # Leer contexto
+    contexto = leer_contexto() if CONTEXT_FILE.exists() else ""
+    rama_actual, ramas_remotas, lectura_readme = leer_contexto_git()
+    prompt_usuario = PROMPT_BASH_FILE.read_text(encoding="utf-8").strip()
+    sistema_msg = (
+        "Eres un experto en bash, git y administración de sistemas Linux. "
+        "Recibirás una petición del usuario para realizar cierta tarea en el servidor, junto con el contexto técnico (rama actual de git, ramas remotas disponibles, contenido del README, etc.). "
+        "Tu tarea es proponer el comando o secuencia de comandos bash necesarios para cumplir la petición de forma segura y concisa. "
+        "Si la petición involucra comandos git, usa siempre la rama 'pruebas/refactor-requisiciones' por defecto (a menos que se especifique otra explícitamente). "
+        "Responde únicamente con el script de comandos listo para ejecutar, sin explicaciones adicionales."
+    )
+    usuario_msg = (
+        f"Contexto general:\n{contexto}\n\n"
+        f"Solicitud del usuario:\n{prompt_usuario}\n\n"
+        f"Rama git actual:\n{rama_actual}\n\n"
+        f"Ramas remotas:\n{ramas_remotas}\n\n"
+        f"README.md:\n{lectura_readme}\n\n"
+        "Recuerda: siempre usa la rama 'pruebas/refactor-requisiciones' para cualquier comando git."
+    )
+    try:
+        respuesta = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": sistema_msg},
+                {"role": "user", "content": usuario_msg}
+            ]
+        )
+        comandos = respuesta.choices[0].message.content.strip()
+        # Filtrar explicaciones si las hubiera (solo comandos)
+        # Quitar líneas que no sean comandos (opcional, pero por seguridad)
+        comandos_limpios = []
+        for linea in comandos.splitlines():
+            if linea.strip().startswith("#") or not linea.strip():
+                continue
+            comandos_limpios.append(linea)
+        comandos_final = "\n".join(comandos_limpios).strip()
+        if comandos_final:
+            COMANDOS_FILE.write_text(comandos_final + "\n", encoding="utf-8")
+            print("Comandos generados automáticamente desde prompt:")
+            print(comandos_final)
+            return True
+        else:
+            print("No se generaron comandos desde el prompt.")
+            return False
+    except Exception as e:
+        print(f"Error al generar comandos desde prompt: {e}")
+        return False
+
 if __name__ == "__main__":
+    guardar_contexto_git()
+    generar_comandos_desde_prompt()
     ciclo_bash_codex()
