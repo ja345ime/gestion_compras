@@ -163,7 +163,7 @@ from .requisiciones.forms import (
 def cli_crear_datos():
     """Crea roles y departamentos iniciales."""
     from .models import Rol, Usuario, Departamento
-    #crear_datos_iniciales(Rol, Departamento, Usuario)
+    crear_datos_iniciales(Rol, Departamento, Usuario)
     click.echo('Datos iniciales creados.')
 
 
@@ -224,7 +224,7 @@ if __name__ == '__main__':
         db.create_all()
         try:
             from .models import Rol, Usuario, Departamento
-            #crear_datos_iniciales(Rol, Departamento, Usuario)
+            crear_datos_iniciales(Rol, Departamento, Usuario)
         except Exception as e:  # pragma: no cover - fallos en inicio no detienen
             app.logger.warning(f'No se pudieron crear datos iniciales: {e}')
     # Se puede ejecutar con flask run o gunicorn

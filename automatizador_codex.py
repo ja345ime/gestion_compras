@@ -217,9 +217,74 @@ def guardar_archivo(ruta: str, contenido: str):
         print(f"Error al escribir {path}: {exc}")
 
 
+def ejecutar_pytest():
+    """Ejecuta pytest y devuelve el resultado completo como string."""
+    print("▶️ Ejecutando pruebas con pytest...")
+    return os.popen("pytest -q --tb=short").read()
+
+
+def obtener_errores_pytest(resultado):
+    """Extrae solo los errores de interés del resultado de pytest."""
+    lineas = resultado.strip().splitlines()
+    errores = [l for l in lineas if "FAILED" in l or "E   " in l]
+    return "\n".join(errores)
+
+
+def bucle_correccion_codex(prompt_text, archivos_contenido, archivos_a_leer, api_key):
+    """Bucle que aplica cambios, ejecuta pruebas y corrige hasta que pasen."""
+    reintentos = 0
+    MAX_INTENTOS = 50
+
+    while reintentos < MAX_INTENTOS:
+        print(f"\n--- Iteración de mejora #{reintentos + 1} ---")
+        cambios = solicitar_cambios(archivos_contenido, prompt_text, api_key)
+        if not cambios:
+            print("No se encontraron cambios válidos.")
+            break
+
+        for ruta, nuevo_contenido in cambios.items():
+            if not isinstance(nuevo_contenido, str):
+                print(f"Contenido inválido para {ruta}. Se omite.")
+                continue
+            guardar_archivo(ruta, nuevo_contenido)
+
+        resultado = ejecutar_pytest()
+        print("📋 Resultado pytest:\n", resultado)
+
+        if "failed" not in resultado.lower():
+            print("✅ Todas las pruebas pasaron.")
+            return True
+
+        errores = obtener_errores_pytest(resultado)
+        if not errores:
+            print("⚠️ No se detectaron errores específicos, pero fallaron pruebas.")
+            errores = resultado
+
+        mensajes = [
+            {
+                "role": "system",
+                "content": (
+                    "Eres un asistente experto que corrige código con base en errores de pytest. "
+                    "Corrige los errores entregados usando los archivos disponibles. No inventes nombres nuevos."
+                ),
+            },
+            {"role": "user", "content": f"Errores detectados:\n{errores}"},
+        ]
+
+        nuevo_prompt = generar_respuesta_modelo(mensajes, api_key)
+        with open(PROMPT_PATH, "w", encoding="utf-8") as f:
+            f.write(nuevo_prompt)
+
+        prompt_text = leer_prompt(PROMPT_PATH)
+        archivos_contenido = leer_archivos(archivos_a_leer)
+        reintentos += 1
+
+    print("🚨 Se alcanzó el número máximo de intentos sin resolver todos los errores.")
+    return False
+
+
 def main():
-    """Ejecuta el automatizador."""
-    # Cargar variables de entorno, incluida la API Key
+    """Ejecuta el automatizador con bucle de resolución de errores."""
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -227,12 +292,13 @@ def main():
         return
 
     print("Leyendo contexto_codex.txt y prompt_actual.txt...")
-    # prompt_text se carga al iniciar el módulo usando PROMPT_PATH y CONTEXT_PATH
+    # prompt_text ya está cargado arriba
 
     print("Escaneando archivos del proyecto...")
     lista_archivos = listar_archivos(BASE_DIR)
     print(f"Se encontraron {len(lista_archivos)} archivos disponibles.")
 
+    # Paso 1: solicitar archivos necesarios
     peticion = solicitar_archivos(lista_archivos, prompt_text, api_key)
     if not peticion:
         print("No se obtuvo una petición válida de archivos.")
@@ -245,49 +311,58 @@ def main():
     print(f"Leyendo {len(archivos_a_leer)} archivos solicitados...")
     archivos_contenido = leer_archivos(archivos_a_leer)
 
-    cambios = solicitar_cambios(archivos_contenido, prompt_text, api_key)
-    if not cambios:
-        print("Intentando convertir la respuesta a JSON...")
-        mensajes = [
-            {
-                "role": "system",
-                "content": "Utiliza los archivos proporcionados para modificar el sistema.",
-            },
-            {
-                "role": "system",
-                "content": "Archivos actuales:\n"
-                + json.dumps(archivos_contenido, indent=2, ensure_ascii=False),
-            },
-            {"role": "user", "content": prompt_text},
-        ]
+    reintentos = 0
+    MAX_INTENTOS = 50
 
-        texto = generar_respuesta_modelo(mensajes, api_key)
-        mensajes.append({"role": "assistant", "content": texto})
-        mensajes.append(
-            {
-                "role": "user",
-                "content": (
-                    "Convierte la respuesta anterior a un diccionario JSON plano donde cada clave "
-                    "sea una ruta de archivo y cada valor el nuevo contenido completo de ese archivo. "
-                    "Devuelve solo el JSON."
-                ),
-            }
-        )
-
-        texto = generar_respuesta_modelo(mensajes, api_key)
-        cambios = extraer_json(texto)
-
+    while reintentos < MAX_INTENTOS:
+        print(f"\n--- Iteración de mejora #{reintentos + 1} ---")
+        cambios = solicitar_cambios(archivos_contenido, prompt_text, api_key)
         if not cambios:
-            print("No se encontraron cambios válidos")
-            return
+            print("No se encontraron cambios válidos.")
+            break
 
-    for ruta, nuevo_contenido in cambios.items():
-        if not isinstance(nuevo_contenido, str):
-            print(f"Contenido inválido para {ruta}. Se omite.")
-            continue
-        guardar_archivo(ruta, nuevo_contenido)
+        for ruta, nuevo_contenido in cambios.items():
+            if not isinstance(nuevo_contenido, str):
+                print(f"Contenido inválido para {ruta}. Se omite.")
+                continue
+            guardar_archivo(ruta, nuevo_contenido)
 
-    print("Proceso completado")
+        # Ejecutar pruebas
+        print("Ejecutando pruebas con pytest...")
+        resultado = os.popen("pytest -q --tb=short").read()
+        print("Resultado pytest:\n", resultado)
+
+        if "failed" not in resultado:
+            print("✅ Todas las pruebas pasaron.")
+            break
+        else:
+            print("❌ Fallaron pruebas. Generando nuevo prompt...")
+
+            mensajes = [
+                {
+                    "role": "system",
+                    "content": (
+                        "Eres un asistente que resuelve errores automáticamente. "
+                        "Corrige el código con base en los siguientes errores de pytest."
+                    ),
+                },
+                {"role": "user", "content": f"Errores detectados:\n{resultado}"},
+            ]
+
+            nuevo_prompt = generar_respuesta_modelo(mensajes, api_key)
+
+            with open(PROMPT_PATH, "w", encoding="utf-8") as f:
+                f.write(nuevo_prompt)
+
+            prompt_text = leer_prompt(PROMPT_PATH)
+            archivos_contenido = leer_archivos(archivos_a_leer)
+            reintentos += 1
+
+    if reintentos >= MAX_INTENTOS:
+        print("🚨 Se alcanzó el número máximo de intentos sin resolver todos los errores.")
+    else:
+        print("Proceso completado con éxito ✅")
+
 
 
 if __name__ == "__main__":
