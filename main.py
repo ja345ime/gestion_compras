@@ -15,12 +15,7 @@ try:
     from langchain.agents import create_openai_functions_agent, AgentExecutor
     from langchain.tools import tool
     from langgraph.graph import StateGraph, END
-    from langchain.agents.format_scratchpad.openai_tools import (
-        OpenAIFunctionsAgentOutputParser,
-        format_to_openai_tool_messages,
-    )
     from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-    from langchain.agents.agent import AgentOutputParser
 except ImportError as e:
     raise ImportError("Necesitas instalar langchain y sus dependencias para ejecutar este agente.") 
 
@@ -249,13 +244,10 @@ else:
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
-    output_parser = OpenAIFunctionsAgentOutputParser()
     base_agent = create_openai_functions_agent(
         llm,
         tools,
         prompt,
-        output_parser=output_parser,
-        format_prompt=format_to_openai_tool_messages,
     )
     base_executor = AgentExecutor(agent=base_agent, tools=tools, verbose=False)
 
