@@ -296,8 +296,12 @@ else:
     # create_react_agent ya incluye placeholders para `tools` y `agent_scratchpad`
     # Simplificamos el prompt siguiendo las indicaciones de Codex
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Eres un asistente experto."),
-        ("human", "{{input}}")
+        (
+            "system",
+            "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar. Piensa paso a paso.",
+        ),
+        ("human", "{{input}}"),
+        ("placeholder", "{agent_scratchpad}")
     ])
 
     # Crear el agente con el LLM y las herramientas disponibles
@@ -310,12 +314,12 @@ else:
     # que espera el agent_runnable.
     agent_node_chain = (
         RunnablePassthrough.assign(
-            input=lambda x: x["messages"][-1].content, # El input es el contenido del último HumanMessage
+            input=lambda x: x["messages"][-1].content,
             agent_scratchpad=lambda x: [
                 msg for msg in x["messages"][:-1] if isinstance(msg, (AIMessage, ToolMessage))
-            ], # El scratchpad son los mensajes anteriores que no son HumanMessage
+            ]
         )
-        | agent_runnable # Luego pasamos esto al agente ReAct
+        | agent_runnable
     )
 
     # Construcción del grafo con LangGraph
