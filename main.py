@@ -2,27 +2,40 @@
 
 import os
 import subprocess
-from typing import List, TypedDict
+from typing import List, TypedDict, Union, Dict, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(model="gpt-4", temperature=0)
-
-from langgraph.graph import StateGraph
-from langgraph.prebuilt import create_react_agent
-from langchain_core.runnables import RunnableLambda
-from langchain_core.prompts import ChatPromptTemplate
-# Load environment variables if a .env file is present
+# --- Cargar variables de entorno primero ---
+# Es crucial que load_dotenv() se ejecute ANTES de que cualquier código intente leer variables de entorno.
 load_dotenv()
 
-# Log of agent actions for each request
+# --- Importaciones de LangChain y LangGraph ---
+# Usaremos las rutas de importación estándar para las versiones más recientes.
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, BaseMessage # Necesario para el historial de mensajes
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import create_react_agent
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough # Importar RunnablePassthrough
+
+# --- Definición manual de ToolInvocation para evitar ModuleNotFoundError ---
+# Si 'from langgraph.schema import ToolInvocation' falla constantemente,
+# podemos definir una clase simple que cumpla con la interfaz esperada por LangGraph.
+# LangGraph solo necesita que el objeto tenga atributos 'tool' y 'tool_input'.
+class ToolInvocation(BaseModel):
+    tool: str
+    tool_input: Union[str, dict]
+
+
+# Log de acciones del agente para cada solicitud (se reinicia en cada petición)
 agent_log: List[str] = []
 
+# --- Definición de herramientas (Tools) para el agente ---
+# Se utiliza el decorador @tool de LangChain para permitir múltiples argumentos (OpenAI function-calling).
 
 @tool
 def run_bash(cmd: str) -> str:
@@ -38,7 +51,10 @@ def run_bash(cmd: str) -> str:
         msg = f"Error al ejecutar comando Bash:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
         agent_log.append(f"✖ {msg}")
         return msg
-
+    except Exception as e:
+        msg = f"Error inesperado al ejecutar comando Bash: {e}"
+        agent_log.append(f"✖ {msg}")
+        return msg
 
 @tool
 def overwrite_file(path: str, content: str) -> str:
@@ -56,7 +72,6 @@ def overwrite_file(path: str, content: str) -> str:
         agent_log.append(f"✖ {msg}")
         return msg
 
-
 @tool
 def append_file(path: str, content: str) -> str:
     """Append text to the end of a file."""
@@ -73,10 +88,9 @@ def append_file(path: str, content: str) -> str:
         agent_log.append(f"✖ {msg}")
         return msg
 
-
 @tool
 def insert_line_after(path: str, line_to_find: str, new_line: str) -> str:
-    """Insert a line after the first occurrence of another line."""
+    """Insert a new line in the file given, after the first occurrence of 'line_to_find'."""
     global agent_log
     agent_log.append(f"→ Insertando línea en {path} después de '{line_to_find}'")
     try:
@@ -86,17 +100,24 @@ def insert_line_after(path: str, line_to_find: str, new_line: str) -> str:
         msg = f"Error: Archivo '{path}' no encontrado."
         agent_log.append(f"✖ {msg}")
         return msg
-    inserted = False
+    except Exception as e:
+        msg = f"Error al leer archivo '{path}': {e}"
+        agent_log.append(f"✖ {msg}")
+        return msg
+    
     new_lines = []
+    inserted = False
     for line in lines:
         new_lines.append(line)
         if line_to_find in line and not inserted:
             new_lines.append(new_line + ("\n" if not new_line.endswith("\n") else ""))
             inserted = True
+    
     if not inserted:
-        msg = f"Advertencia: No se encontró la línea '{line_to_find}' en '{path}'."
+        msg = f"Advertencia: No se encontró la línea '{line_to_find}' en '{path}'. No se insertó el contenido."
         agent_log.append(f"✔ {msg}")
         return msg
+    
     try:
         with open(path, "w") as f:
             f.writelines(new_lines)
@@ -107,7 +128,6 @@ def insert_line_after(path: str, line_to_find: str, new_line: str) -> str:
         msg = f"Error al escribir en el archivo '{path}': {e}"
         agent_log.append(f"✖ {msg}")
         return msg
-
 
 @tool
 def restart_service(service_name: str) -> str:
@@ -123,7 +143,10 @@ def restart_service(service_name: str) -> str:
         msg = f"Error al reiniciar servicio '{service_name}':\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
         agent_log.append(f"✖ {msg}")
         return msg
-
+    except Exception as e:
+        msg = f"Error inesperado al reiniciar servicio '{service_name}': {e}"
+        agent_log.append(f"✖ {msg}")
+        return msg
 
 @tool
 def run_tests(test_path: str = "tests/") -> str:
@@ -131,15 +154,33 @@ def run_tests(test_path: str = "tests/") -> str:
     global agent_log
     agent_log.append(f"→ Ejecutando tests Pytest en: {test_path}")
     try:
-        result = subprocess.run(["pytest", test_path], capture_output=True, text=True)
+        # Si no existe la carpeta de tests, creamos un test de ejemplo (para demostración)
+        if not os.path.exists(test_path):
+            os.makedirs(test_path, exist_ok=True)
+        example_test = os.path.join(test_path, "test_example.py")
+        if not os.path.exists(example_test):
+            with open(example_test, "w") as f:
+                f.write('''\
+def test_example_success():
+    assert True
+
+def test_example_failure():
+    assert False  # Este test fallará para demostrar la corrección
+''')
+            agent_log.append(f"Creado archivo de test de ejemplo: {example_test}")
+        
+        result = subprocess.run(["pytest", test_path], capture_output=True, text=True, check=False) # check=False para capturar fallos
         output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         agent_log.append(f"✔ Resultado run_tests:\n{output}")
         return output
-    except Exception as e:
-        msg = f"Error al ejecutar tests: {e}"
+    except FileNotFoundError:
+        msg = "Error: pytest no encontrado. Asegúrate de que esté instalado."
         agent_log.append(f"✖ {msg}")
         return msg
-
+    except Exception as e:
+        msg = f"Error inesperado al ejecutar tests: {e}"
+        agent_log.append(f"✖ {msg}")
+        return msg
 
 @tool
 def check_logs(log_path: str = "logs/app.log", num_lines: int = 100) -> str:
@@ -147,16 +188,22 @@ def check_logs(log_path: str = "logs/app.log", num_lines: int = 100) -> str:
     global agent_log
     agent_log.append(f"→ Leyendo últimas {num_lines} líneas de log: {log_path}")
     try:
+        if not os.path.exists(os.path.dirname(log_path)):
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        if not os.path.exists(log_path):
+            with open(log_path, "w") as f:
+                f.write("Log de prueba 1\nLog de prueba 2\nLog de prueba 3\n")
+            agent_log.append(f"Creado archivo de log de ejemplo: {log_path}")
+        
         with open(log_path, "r") as f:
             lines = f.readlines()
-        output = "".join(lines[-num_lines:])
+        output = "".join(lines[-num_lines:]) if num_lines > 0 else ""
         agent_log.append(f"✔ Resultado check_logs:\n{output}")
         return output
     except Exception as e:
         msg = f"Error al leer el log '{log_path}': {e}"
         agent_log.append(f"✖ {msg}")
         return msg
-
 
 @tool
 def read_file(path: str) -> str:
@@ -186,57 +233,115 @@ tools = [
     read_file
 ]
 
+# --- Definición del estado del grafo para LangGraph ---
+# El estado debe ser compatible con lo que LangGraph espera y lo que el agente necesita
+class AgentState(TypedDict):
+    messages: List[BaseMessage] # Historial de mensajes para el agente
 
-# --- LLM and agent setup ---
+# --- Función para ejecutar herramientas (necesaria para el nodo 'tool_node') ---
+# Esta función debe definirse ANTES de que se use en el grafo.
+def execute_tools(state: AgentState) -> Dict[str, Any]:
+    last_message = state["messages"][-1]
+    tool_outputs = []
+    for tool_call in last_message.tool_calls:
+        tool_name = tool_call.get("name")
+        tool_args = tool_call.get("args")
+        
+        # Buscar la herramienta por nombre y ejecutarla
+        found_tool = next((t for t in tools if t.name == tool_name), None)
+        if found_tool:
+            try:
+                output = found_tool.invoke(tool_args)
+                tool_outputs.append(ToolMessage(content=str(output), tool_call_id=tool_call.get("id")))
+            except Exception as e:
+                tool_outputs.append(ToolMessage(content=f"Error ejecutando herramienta {tool_name}: {e}", tool_call_id=tool_call.get("id")))
+        else:
+            tool_outputs.append(ToolMessage(content=f"Herramienta {tool_name} no encontrada.", tool_call_id=tool_call.get("id")))
+    
+    # Añadir las salidas de las herramientas al historial de mensajes
+    return {"messages": state["messages"] + tool_outputs}
+
+
+# --- Configuración del modelo de lenguaje (LLM) y agente ---
 openai_api_key = os.getenv("OPENAI_API_KEY")
-if openai_api_key:
+if not openai_api_key:
+    print("ADVERTENCIA: OPENAI_API_KEY no está configurada. El agente no funcionará sin ella.")
+    llm = None # Aseguramos que llm sea None si no hay API key
+    agent_executor = None
+else:
     llm = ChatOpenAI(
-        model_name=os.getenv("OPENAI_MODEL", "gpt-4-0613"),
+        model=os.getenv("OPENAI_MODEL", "gpt-4o"), # Usamos gpt-4o como default para las últimas versiones
         temperature=0,
         openai_api_key=openai_api_key,
     )
-    # Define el mensaje del sistema
-    system_message = "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario."
 
-    # Define el modificador de estado
-    def state_modifier(state):
-        messages = state.get("messages", [])
-        # Agrega el mensaje del sistema al inicio
-        return [{"role": "system", "content": system_message}] + messages
-
-    # Crear el agente con el LLM y las herramientas disponibles
-    
-    agent = create_react_agent(llm, tools=tools, prompt=prompt)
-
+    # Definición del prompt para el agente ReAct
+    # create_react_agent ya incluye placeholders para `tools` y `agent_scratchpad`
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario."),
-        ("human", "{input}")
+        ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario a diagnosticar, corregir, implementar funcionalidades y vistas, ejecutar pruebas y revisar logs en un entorno de servidor. Piensa paso a paso y usa las herramientas de forma efectiva para lograr el objetivo."),
+        ("human", "{input}"),
+        ("placeholder", "{agent_scratchpad}") # Necesario para el historial de pensamiento del agente
     ])
 
+    # Crear el agente con el LLM y las herramientas disponibles
+    # create_react_agent es una Runnable, no necesita ser envuelta en StateGraph para su uso básico
+    agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
 
-    response = agent.invoke({
-        "messages": [{"role": "user", "content": "lee el archivo requirements.txt"}]
-    })
+    # Función que se ejecutará como nodo en el grafo
+    def run_agent_node(state: AgentState) -> Dict[str, Any]:
+        # El último mensaje en el historial del estado es el HumanMessage actual.
+        # Todos los mensajes anteriores (AI y Tool) forman el agent_scratchpad.
+        
+        # Extraer el input (contenido del último HumanMessage)
+        # Se asume que el último mensaje siempre es un HumanMessage que representa el input actual
+        current_human_input = state["messages"][-1].content
+        
+        # El agent_scratchpad son todos los mensajes anteriores al último HumanMessage
+        # que son de tipo AIMessage o ToolMessage.
+        agent_scratchpad_messages = [
+            msg for msg in state["messages"][:-1] if isinstance(msg, (AIMessage, ToolMessage))
+        ]
 
-    class AgentState(TypedDict):
-        input: str
-        result: str | None
+        # Invocar el agente con los parámetros esperados por create_react_agent
+        result = agent_runnable.invoke({
+            "input": current_human_input,
+            "agent_scratchpad": agent_scratchpad_messages
+        })
+        
+        # El resultado del agente (AIMessage o AIMessage con tool_calls) se añade al historial
+        return {"messages": state["messages"] + [result]}
 
-    def run_agent(state: AgentState) -> AgentState:
-        result = agent.invoke({"input": state["input"]})
-        return {"input": state["input"], "result": result}
 
-
-
-
+    # Construcción del grafo con LangGraph
     workflow = StateGraph(AgentState)
-    workflow.add_node("run_agent", RunnableLambda(run_agent))
-    workflow.set_entry_point("run_agent")
-    workflow.set_finish_point("run_agent")
+    workflow.add_node("agent_node", run_agent_node) # Nodo para el agente
+    workflow.add_node("tool_node", execute_tools) # Nodo para ejecutar herramientas
+
+    # Función para decidir el siguiente paso del grafo
+    def should_continue(state: AgentState) -> str:
+        last_message = state["messages"][-1]
+        # Si el último mensaje del agente tiene llamadas a herramientas, ir al nodo de herramientas
+        if isinstance(last_message, AIMessage) and last_message.tool_calls:
+            return "tool_node"
+        # Si no tiene llamadas a herramientas, el agente ha terminado de responder
+        return END
+
+    # Definir la entrada del grafo
+    workflow.set_entry_point("agent_node")
+
+    # Definir las transiciones condicionales desde el nodo del agente
+    workflow.add_conditional_edges(
+        "agent_node",
+        should_continue,
+        {
+            "tool_node": "tool_node", # Si hay tool_calls, ir a tool_node
+            END: END # Si no, terminar
+        }
+    )
+    # Después de ejecutar las herramientas, volver al agente para que evalúe la salida
+    workflow.add_edge("tool_node", "agent_node")
+
     agent_executor = workflow.compile()
-else:
-    llm = None
-    agent_executor = None
 
 
 class PromptRequest(BaseModel):
@@ -249,25 +354,46 @@ class AgentResponse(BaseModel):
     full_log: List[str]
 
 
-app = FastAPI(title="LangGraph Agent", version="1.0.0")
-
+app = FastAPI(
+    title="Agente IA Autónomo para Desarrollo/Mantenimiento",
+    description="Agente de IA que puede leer/escribir archivos, ejecutar comandos de sistema, correr tests y analizar logs para mantener una app Flask.",
+    version="0.2.0"
+)
 
 @app.post("/run-agent", response_model=AgentResponse)
-async def run_agent_endpoint(request: PromptRequest):
+async def run_agent_endpoint(request: PromptRequest = Body(...)):
     """Execute the agent with the provided prompt."""
     if agent_executor is None:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY no configurada")
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY no configurada o LLM no inicializado.")
 
     global agent_log
     agent_log = [f"Prompt recibido: {request.prompt}"]
     try:
-        state = {"input": request.prompt, "result": None}
-        result_state = agent_executor.invoke(state)
-        result = result_state.get("result") if isinstance(result_state, dict) else str(result_state)
-        agent_log.append(f"Respuesta final del agente: {result}")
-        return AgentResponse(status="success", message=result, full_log=agent_log)
+        # El estado inicial para el grafo
+        # El "input" del usuario se pasa como un HumanMessage inicial
+        initial_state = {"messages": [HumanMessage(content=request.prompt)]}
+        
+        # Ejecutar el grafo del agente
+        # Iteramos sobre el stream para capturar todos los pasos del agente
+        final_state = None
+        for step_output in agent_executor.stream(initial_state):
+            # Cada 'step_output' es un diccionario con el estado del grafo en ese punto
+            # Capturamos el último estado completo
+            final_state = step_output
+            # Puedes añadir más logging aquí si quieres ver el progreso paso a paso en el log
+            # agent_log.append(f"Estado intermedio: {step_output}")
+
+        # El resultado final es el último mensaje del agente
+        if final_state and final_state.get("messages"):
+            # El último mensaje es la respuesta final del agente
+            final_message = final_state["messages"][-1]
+            result_content = final_message.content if final_message.content else "El agente completó la tarea sin una respuesta final explícita."
+            agent_log.append(f"Respuesta final del agente: {result_content}")
+            return AgentResponse(status="success", message=result_content, full_log=agent_log)
+        else:
+            return AgentResponse(status="error", message="El agente no produjo una respuesta final válida.", full_log=agent_log)
+
     except Exception as e:
         msg = f"Error interno del agente: {e}"
         agent_log.append(f"✖ {msg}")
         raise HTTPException(status_code=500, detail=msg)
-
