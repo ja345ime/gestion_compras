@@ -220,16 +220,21 @@ def read_file(path: str) -> str:
         return error_msg
 
 # Lista de herramientas disponibles para el agente
-tools = [
-    run_bash,
-    overwrite_file,
-    append_file,
-    insert_line_after,
-    restart_service,
-    run_tests,
-    check_logs,
-    read_file,
-]
+tools = list(
+    map(
+        tool,
+        [
+            run_bash,
+            overwrite_file,
+            append_file,
+            insert_line_after,
+            restart_service,
+            run_tests,
+            check_logs,
+            read_file,
+        ],
+    )
+)
 
 # --- Configuración del modelo de lenguaje (LLM) y agente ---
 openai_api_key = os.getenv("OPENAI_API_KEY")
