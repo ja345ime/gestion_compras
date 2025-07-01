@@ -282,7 +282,10 @@ else:
     workflow.add_edge("interpret_prompt", "execute_tool")
     workflow.add_edge("execute_tool", "analyze_result")
     workflow.add_edge("analyze_result", "decide")
-    workflow.add_conditional_edges("decide", {"repeat": "interpret_prompt", "end": END})
+    workflow.add_conditional_edges("decide", {
+        "repeat": interpret_prompt,
+        "end": END
+    })
     workflow.set_entry_point("interpret_prompt")
     agent_executor = workflow.compile()
 
