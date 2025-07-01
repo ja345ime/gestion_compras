@@ -216,11 +216,12 @@ async def run_agent(request: PromptRequest = Body(...)):
 
     try:
         if openai and openai_api_key:
-            respuesta = openai.ChatCompletion.create(
+            client = openai.OpenAI(api_key=openai_api_key)
+            respuesta = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
             )
-            mensaje = respuesta["choices"][0]["message"]["content"]
+            mensaje = respuesta.choices[0].message.content
         else:
             mensaje = f"Simulación de respuesta para: {prompt}"
         full_log.append(mensaje)
