@@ -200,7 +200,7 @@ if openai_api_key:
         ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario."),
         ("human", "{input}")
     ])
-    agent = create_react_agent(llm, tools, prompt)
+    agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
 
     class AgentState(TypedDict):
         input: str
