@@ -282,14 +282,14 @@ else:
     # Simplificamos el prompt siguiendo las indicaciones de Codex
     prompt = ChatPromptTemplate.from_messages([
         ("system", "Eres un asistente experto."),
-        ("human", "{input}")
+        ("human", "{{input}}")
     ])
 
     # Crear el agente con el LLM y las herramientas disponibles
     # create_react_agent es una Runnable, no necesita ser envuelta en StateGraph para su uso básico
     agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
     agent_runnable = agent_runnable.with_config({"run_name": "agente"})
-
+    agent_runnable = RunnableLambda(lambda x: {"input": x["messages"][-1].content}) | agent_runnable
     # Definimos la cadena de procesamiento para el nodo del agente
     # Esta cadena toma el 'messages' del AgentState y lo transforma en el 'input' y 'agent_scratchpad'
     # que espera el agent_runnable.
