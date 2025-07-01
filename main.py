@@ -12,10 +12,10 @@ load_dotenv()
 # Cargar la API de OpenAI y herramientas de LangChain
 try:
     from langchain_openai import ChatOpenAI
-    from langchain.agents import create_openai_functions_agent, AgentExecutor
     from langchain.tools import tool
     from langgraph.graph import StateGraph, END
-    from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from langgraph.prebuilt import create_react_agent
+    from langchain_core.runnables import RunnableLambda
 except ImportError as e:
     raise ImportError("Necesitas instalar langchain y sus dependencias para ejecutar este agente.") 
 
@@ -224,70 +224,42 @@ tools = [run_bash, overwrite_file, append_file, insert_line_after,
 
 # --- Configuración del modelo de lenguaje (LLM) y agente ---
 openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
+if openai_api_key:
+    llm = ChatOpenAI(
+        model_name=os.getenv("OPENAI_MODEL", "gpt-4-0613"),
+        temperature=0,
+        openai_api_key=openai_api_key,
+    )
+
+    # Crear agente ReAct oficial con LangGraph
+    base_executor = create_react_agent(llm=llm, tools=tools)
+
+    # Estado del agente
+    class AgentState(TypedDict):
+        input: str
+        result: str | None
+
+    # Función que corre el agente
+    def run_agent(state: AgentState) -> AgentState:
+        result = base_executor.invoke({"input": state["input"]})
+        agent_log.append(f"✔ Resultado del agente:\n{result}")
+        return {"input": state["input"], "result": result}
+
+    # Crear grafo con un solo nodo de ejecución (estable)
+    workflow = StateGraph(AgentState)
+    workflow.add_node("run_agent", RunnableLambda(run_agent))
+    workflow.set_entry_point("run_agent")
+    workflow.set_finish_point("run_agent")
+
+    # Compilar ejecutor final
+    agent_executor = workflow.compile()
+else:
     print(
         "ADVERTENCIA: OPENAI_API_KEY no está configurada. "
         "El agente no se inicializará hasta que proporciones la clave."
     )
     llm = None
     agent_executor = None
-else:
-    # Usamos GPT-4 (o GPT-3.5) a través de la API de OpenAI
-    llm = ChatOpenAI(
-        model_name=os.getenv("OPENAI_MODEL", "gpt-4-0613"),
-        temperature=0,
-        openai_api_key=openai_api_key,
-    )
-    # Crear el agente base con las herramientas definidas
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "Eres un agente experto en mantenimiento de servidores y apps."),
-        ("user", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
-    base_agent = create_openai_functions_agent(
-        llm,
-        tools,
-        prompt,
-    )
-    base_executor = AgentExecutor(agent=base_agent, tools=tools, verbose=False)
-
-    class AgentState(TypedDict):
-        input: str
-        result: str | None
-        done: bool
-
-    def interpret_prompt(state: AgentState) -> AgentState:
-        agent_log.append(f"→ Interpretando prompt: {state['input']}")
-        return state
-
-    def execute_tool(state: AgentState) -> AgentState:
-        response = base_executor.invoke({"input": state["input"]})
-        result = response.get("output", response) if isinstance(response, dict) else response
-        state["result"] = result
-        state["done"] = True
-        return state
-
-    def analyze_result(state: AgentState) -> AgentState:
-        agent_log.append(f"✔ Resultado herramienta:\n{state.get('result', '')}")
-        return state
-
-    def decide_next(state: AgentState) -> str:
-        return "end" if state.get("done") else "repeat"
-
-    workflow = StateGraph(AgentState)
-    workflow.add_node("interpret_prompt", interpret_prompt)
-    workflow.add_node("execute_tool", execute_tool)
-    workflow.add_node("analyze_result", analyze_result)
-    workflow.add_node("decide", decide_next)
-    workflow.add_edge("interpret_prompt", "execute_tool")
-    workflow.add_edge("execute_tool", "analyze_result")
-    workflow.add_edge("analyze_result", "decide")
-    workflow.add_conditional_edges("decide", {
-        "repeat": interpret_prompt,
-        "end": END
-    })
-    workflow.set_entry_point("interpret_prompt")
-    agent_executor = workflow.compile()
 
 # Modelos Pydantic para la API HTTP
 class PromptRequest(BaseModel):
