@@ -10,12 +10,13 @@ from dotenv import load_dotenv
 
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
-
-
 # Load environment variables if a .env file is present
 load_dotenv()
 
@@ -194,13 +195,28 @@ if openai_api_key:
         temperature=0,
         openai_api_key=openai_api_key,
     )
+    # Define el mensaje del sistema
+    system_message = "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario."
+
+    # Define el modificador de estado
+    def state_modifier(state):
+        messages = state.get("messages", [])
+        # Agrega el mensaje del sistema al inicio
+        return [{"role": "system", "content": system_message}] + messages
 
     # Crear el agente con el LLM y las herramientas disponibles
+    
+    agent = create_react_agent(llm, tools=tools, prompt=prompt)
+
     prompt = ChatPromptTemplate.from_messages([
         ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario."),
         ("human", "{input}")
     ])
-    agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
+
+
+    response = agent.invoke({
+        "messages": [{"role": "user", "content": "lee el archivo requirements.txt"}]
+    })
 
     class AgentState(TypedDict):
         input: str
@@ -208,8 +224,10 @@ if openai_api_key:
 
     def run_agent(state: AgentState) -> AgentState:
         result = agent.invoke({"input": state["input"]})
-        agent_log.append(f"✔ Resultado del agente:\n{result}")
         return {"input": state["input"], "result": result}
+
+
+
 
     workflow = StateGraph(AgentState)
     workflow.add_node("run_agent", RunnableLambda(run_agent))
