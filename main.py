@@ -291,7 +291,7 @@ else:
     agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
     agent_runnable = agent_runnable.with_config({"run_name": "agente"})
     # Asegura que 'prompt' se renombre a 'input' antes de entrar al agente
-    agent_runnable = RunnableLambda(lambda x: {"input": x["prompt"]}) | agent_runnable
+    agent_runnable = RunnableLambda(lambda x: {"input": x["messages"][-1].content}) | agent_runnable
 
     # Definimos la cadena de procesamiento para el nodo del agente
     # Esta cadena toma el 'messages' del AgentState y lo transforma en el 'input' y 'agent_scratchpad'
