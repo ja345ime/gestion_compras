@@ -21,6 +21,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import create_react_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough # Importar RunnablePassthrough
+from langchain_core.runnables import RunnableLambda
 
 # --- Definición manual de ToolInvocation para evitar ModuleNotFoundError ---
 # Si 'from langgraph.schema import ToolInvocation' falla constantemente,
