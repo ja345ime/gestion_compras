@@ -58,6 +58,20 @@ def run_bash(cmd: str) -> str:
         return msg
 
 @tool
+def leer_archivo(path: str) -> str:
+    """Lee el contenido de un archivo dado su path."""
+    global agent_log
+    agent_log.append(f"→ Leyendo archivo: {path}")
+    try:
+        with open(path, "r") as f:
+            contenido = f.read()
+            agent_log.append(f"✔ Contenido leído: {contenido[:200]}...")
+            return contenido
+    except Exception as e:
+        agent_log.append(f"✖ Error al leer el archivo: {e}")
+        return f"Error leyendo el archivo: {e}"
+
+@tool
 def overwrite_file(path: str, content: str) -> str:
     """Overwrite the given file with the provided content."""
     global agent_log
@@ -225,6 +239,7 @@ def read_file(path: str) -> str:
 # Lista de herramientas disponibles para el agente
 tools = [
     run_bash,
+    leer_archivo,
     overwrite_file,
     append_file,
     insert_line_after,
