@@ -14,8 +14,6 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import RunnableLambda
 
-from langgraph.prebuilt import create_tool_calling_prompt
-from langchain_core.prompts import ChatPromptTemplate
 
 # Load environment variables if a .env file is present
 load_dotenv()
@@ -196,11 +194,8 @@ if openai_api_key:
         openai_api_key=openai_api_key,
     )
 
-    # Crear prompt base para el agente con las herramientas
-    prompt = create_tool_calling_prompt(tools)
-
-    # Crear el agente con LLM, tools y prompt
-    agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
+    # Crear el agente con el LLM y las herramientas disponibles
+    agent = create_react_agent(tools=tools, llm=llm)
 
     class AgentState(TypedDict):
         input: str
