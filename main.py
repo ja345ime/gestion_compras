@@ -15,7 +15,7 @@ try:
     from langchain.agents import create_openai_functions_agent, AgentExecutor
     from langchain.tools import tool
     from langgraph.graph import StateGraph, END
-    from langchain.agents.openai_functions_agent.prompt import FUNCTIONS_AGENT_PROMPT
+    from langchain.agents.openai_functions_agent.base import FUNCTIONS_AGENT_PROMPT
 except ImportError as e:
     raise ImportError("Necesitas instalar langchain y sus dependencias para ejecutar este agente.") 
 
