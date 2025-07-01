@@ -232,7 +232,7 @@ if openai_api_key:
     )
 
     # Crear agente ReAct oficial con LangGraph
-    base_executor = create_react_agent(llm=llm, tools=tools)
+    agent = create_react_agent(tools, llm)
 
     # Estado del agente
     class AgentState(TypedDict):
@@ -241,7 +241,7 @@ if openai_api_key:
 
     # Función que corre el agente
     def run_agent(state: AgentState) -> AgentState:
-        result = base_executor.invoke({"input": state["input"]})
+        result = agent.invoke({"input": state["input"]})
         agent_log.append(f"✔ Resultado del agente:\n{result}")
         return {"input": state["input"], "result": result}
 
@@ -278,7 +278,7 @@ app = FastAPI(
 )
 
 @app.post("/run-agent", response_model=AgentResponse)
-async def run_agent(request: PromptRequest = Body(...)):
+async def run_agent_endpoint(request: PromptRequest = Body(...)):
     """Endpoint HTTP para ejecutar el agente con un prompt dado."""
     prompt = request.prompt
     # Reiniciar el log de acciones por cada solicitud
