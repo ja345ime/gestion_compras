@@ -4,13 +4,13 @@ import json
 from typing import List, Dict, Any, Union
 
 from fastapi import FastAPI, HTTPException, Body
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
+import openai
 from dotenv import load_dotenv
 
 # Importaciones de LangChain y LangGraph
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.tools import tool # Correcto para el decorador @tool
-from langchain_openai import ChatOpenAI # Puedes cambiarlo por otro LLM si tienes la clave
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolExecutor # Esta es la línea correcta para ToolExecutor
 from langgraph.prebuilt.tool_executor import ToolInvocation # Importación corregida para ToolInvocation (esperamos que las últimas versiones la expongan aquí)
@@ -30,8 +30,8 @@ print("✅ main.py SE ESTÁ EJECUTANDO")
 # Si no tienes una, puedes usar un modelo local o simularlo.
 # Para GPT-4, necesitarías la API Key de OpenAI.
 # Si la variable de entorno OPENAI_API_KEY no está configurada, esto fallará.
-# Para este ejemplo, usaremos ChatOpenAI.
-# Si quieres simular, puedes crear una clase que imite el comportamiento de ChatOpenOpenAI.
+# Para este ejemplo, usaremos la API de OpenAI directamente.
+# Si quieres simular, puedes crear una clase que imite el comportamiento del modelo.
 # Por ejemplo:
 # class MockLLM:
 #     def invoke(self, messages):
@@ -48,7 +48,7 @@ if not openai_api_key:
     print("Para un uso real, asegúrate de configurarla o usa un LLM local/alternativo.")
     print("Puedes obtener una en [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)")
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=openai_api_key)
+openai.api_key = openai_api_key
 
 
 # --- Definición de Herramientas para el Agente ---
@@ -214,8 +214,23 @@ class AgentState(BaseModel):
 # 2. Nodo para invocar al LLM
 def call_llm(state: AgentState) -> Dict[str, Any]:
     messages = state['messages']
-    # El LLM decide qué herramienta usar o si responde directamente
-    response = llm.invoke(messages)
+    openai_messages = []
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            openai_messages.append({"role": "user", "content": msg.content})
+        elif isinstance(msg, AIMessage):
+            openai_messages.append({"role": "assistant", "content": msg.content})
+        elif isinstance(msg, ToolInvocation):
+            openai_messages.append({"role": "tool", "name": msg.tool, "content": json.dumps(msg.tool_input)})
+    try:
+        respuesta = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=openai_messages,
+        )
+        content = respuesta["choices"][0]["message"]["content"]
+        response = AIMessage(content=content)
+    except Exception as e:
+        raise RuntimeError(f"Error al invocar Codex: {e}")
     return {"messages": messages + [response]}
 
 # 3. Nodo para ejecutar herramientas
@@ -268,16 +283,7 @@ workflow.add_conditional_edges(
 workflow.add_edge("tool", "llm") # Después de ejecutar una herramienta, volvemos al LLM para que evalúe o siga pensando
 
 # Compilar el grafo
-
-if llm is None:
-    print("⚠️ Abortando: LLM no inicializado.")
-    exit(1)
-
-
 app_agent = workflow.compile()
-
-from pydantic import BaseModel
-from typing import List, Dict, Any
 
 
 class PromptRequest(BaseModel):
@@ -306,7 +312,7 @@ async def run_agent(request: PromptRequest = Body(...)):
             final_state = state
 
         if final_state and final_state.get("messages"):
-            agent_response_message = final_state.messages[-1]
+            agent_response_message = final_state["messages"][-1]
             return AgentResponse(
                 status="success",
                 message=agent_response_message.content,
@@ -315,7 +321,7 @@ async def run_agent(request: PromptRequest = Body(...)):
                         "type": type(msg).__name__,
                         "content": str(msg)
                     }
-                    for msg in final_state.messages
+                    for msg in final_state["messages"]
                 ]
             )
         else:
