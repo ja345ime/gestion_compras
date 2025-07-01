@@ -362,8 +362,9 @@ async def run_agent(req: PromptRequest):
 
     try:
         # Convertir el campo 'prompt' en la estructura que espera el agente
-        messages = [HumanMessage(content=req.prompt)]
-        inputs = {"messages": messages, "steps": []}
+        prompt = req.prompt
+        messages = [HumanMessage(content=prompt)]
+        inputs = {"prompt": prompt, "messages": messages, "steps": []}
 
         result = agent_executor.invoke(inputs)
         return {"respuesta": result["messages"][-1].content}
