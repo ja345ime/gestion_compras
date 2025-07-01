@@ -4,7 +4,7 @@ import json
 from typing import List, Dict, Any, Union
 
 from fastapi import FastAPI, HTTPException, Body
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from dotenv import load_dotenv
 
 # Importaciones de LangChain y LangGraph
@@ -306,7 +306,7 @@ async def run_agent(request: PromptRequest = Body(...)):
             final_state = state
 
         if final_state and final_state.get("messages"):
-            agent_response_message = final_state["messages"][-1]
+            agent_response_message = final_state.messages[-1]
             return AgentResponse(
                 status="success",
                 message=agent_response_message.content,
@@ -315,7 +315,7 @@ async def run_agent(request: PromptRequest = Body(...)):
                         "type": type(msg).__name__,
                         "content": str(msg)
                     }
-                    for msg in final_state["messages"]
+                    for msg in final_state.messages
                 ]
             )
         else:
