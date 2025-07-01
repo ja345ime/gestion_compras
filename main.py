@@ -14,7 +14,7 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import RunnableLambda
 
-from langchain.agents.agent_toolkits.base import create_tool_calling_prompt
+from langgraph.prebuilt import create_tool_calling_prompt
 from langchain_core.prompts import ChatPromptTemplate
 
 # Load environment variables if a .env file is present
