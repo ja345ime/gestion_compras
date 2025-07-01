@@ -3,7 +3,7 @@ import subprocess
 import json
 from typing import List, Dict, Any, Union
 
-from fastapi import FastAPI, Request, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -276,24 +276,20 @@ if llm is None:
 
 app_agent = workflow.compile()
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from typing import List, Dict, Any
 
-class AgentResponse(BaseModel):
-    status: str
-    message: str
-    full_log: List[Dict[str, Any]]
 
 class PromptRequest(BaseModel):
     prompt: str
 
+
 class AgentResponse(BaseModel):
     status: str
     message: str
     full_log: List[Dict[str, Any]]
 
 
-from fastapi import Body, HTTPException
 @app.post("/run-agent", response_model=AgentResponse)
 async def run_agent(request: PromptRequest = Body(...)):
     """
@@ -332,18 +328,6 @@ async def run_agent(request: PromptRequest = Body(...)):
     except Exception as e:
         print(f"Error en el agente: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno del agente: {e}")
-
-# --- Endpoint de FastAPI para el Agente ---
-
-import traceback
-try:
-    from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
-except Exception as e:
-    print("❌ ERROR AL INICIALIZAR LLM:")
-    traceback.print_exc()
-    llm = None  # Evita que explote
-
 
 # --- Instrucciones para ejecutar el servidor FastAPI ---
 # Para ejecutar esta API, guarda el código como `main.py` y luego en tu terminal:
