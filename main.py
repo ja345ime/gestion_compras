@@ -22,7 +22,6 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import create_react_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough # Importar RunnablePassthrough
-from langchain_core.runnables import RunnableLambda
 
 # --- Definición manual de ToolInvocation para evitar ModuleNotFoundError ---
 # Si 'from langgraph.schema import ToolInvocation' falla constantemente,
@@ -290,8 +289,6 @@ else:
     # create_react_agent es una Runnable, no necesita ser envuelta en StateGraph para su uso básico
     agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
     agent_runnable = agent_runnable.with_config({"run_name": "agente"})
-    # Asegura que 'prompt' se renombre a 'input' antes de entrar al agente
-    agent_runnable = RunnableLambda(lambda x: {"input": x["messages"][-1].content}) | agent_runnable
 
     # Definimos la cadena de procesamiento para el nodo del agente
     # Esta cadena toma el 'messages' del AgentState y lo transforma en el 'input' y 'agent_scratchpad'
@@ -364,7 +361,7 @@ async def run_agent(req: PromptRequest):
         # Convertir el campo 'prompt' en la estructura que espera el agente
         prompt = req.prompt
         messages = [HumanMessage(content=prompt)]
-        inputs = {"prompt": prompt, "messages": messages, "steps": []}
+        inputs = {"messages": messages, "steps": []}
 
         result = agent_executor.invoke(inputs)
         return {"respuesta": result["messages"][-1].content}
