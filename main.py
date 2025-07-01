@@ -267,7 +267,7 @@ async def run_agent(request: PromptRequest = Body(...)):
                 "OPENAI_API_KEY no configurada. Configúrala y reinicia la aplicación."
             )
         # Ejecutar el agente con el prompt del usuario
-        result = agent.run(prompt)
+        result = agent.invoke({"input": prompt})
         if not isinstance(result, str):
             result = str(result)
         agent_log.append(f"Respuesta final del agente: {result}")
