@@ -180,7 +180,7 @@ tools = [
     restart_service,
     run_tests,
     check_logs,
-    read_file,
+    read_file
 ]
 
 
@@ -192,7 +192,7 @@ if openai_api_key:
         temperature=0,
         openai_api_key=openai_api_key,
     )
-    agent = create_react_agent(tools, llm)
+    agent = create_react_agent(llm, tools)
 
     class AgentState(TypedDict):
         input: str
