@@ -1,6 +1,7 @@
 # main.py
 import os
 import subprocess
+from typing import TypedDict
 from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -11,8 +12,9 @@ load_dotenv()
 # Cargar la API de OpenAI y herramientas de LangChain
 try:
     from langchain_openai import ChatOpenAI
-    from langchain.agents import initialize_agent, AgentType
+    from langchain.agents import create_openai_functions_agent, AgentExecutor
     from langchain.tools import tool
+    from langgraph.graph import StateGraph, END
 except ImportError as e:
     raise ImportError("Necesitas instalar langchain y sus dependencias para ejecutar este agente.") 
 
@@ -227,7 +229,7 @@ if not openai_api_key:
         "El agente no se inicializará hasta que proporciones la clave."
     )
     llm = None
-    agent = None
+    agent_executor = None
 else:
     # Usamos GPT-4 (o GPT-3.5) a través de la API de OpenAI
     llm = ChatOpenAI(
@@ -235,8 +237,44 @@ else:
         temperature=0,
         openai_api_key=openai_api_key,
     )
-    # Inicializar el agente con las herramientas definidas, usando el agente de funciones de OpenAI
-    agent = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=False)
+    # Crear el agente base con las herramientas definidas
+    base_agent = create_openai_functions_agent(llm, tools)
+    base_executor = AgentExecutor(agent=base_agent, tools=tools, verbose=False)
+
+    class AgentState(TypedDict):
+        input: str
+        result: str | None
+        done: bool
+
+    def interpret_prompt(state: AgentState) -> AgentState:
+        agent_log.append(f"→ Interpretando prompt: {state['input']}")
+        return state
+
+    def execute_tool(state: AgentState) -> AgentState:
+        response = base_executor.invoke({"input": state["input"]})
+        result = response.get("output", response) if isinstance(response, dict) else response
+        state["result"] = result
+        state["done"] = True
+        return state
+
+    def analyze_result(state: AgentState) -> AgentState:
+        agent_log.append(f"✔ Resultado herramienta:\n{state.get('result', '')}")
+        return state
+
+    def decide_next(state: AgentState) -> str:
+        return "end" if state.get("done") else "repeat"
+
+    workflow = StateGraph(AgentState)
+    workflow.add_node("interpret_prompt", interpret_prompt)
+    workflow.add_node("execute_tool", execute_tool)
+    workflow.add_node("analyze_result", analyze_result)
+    workflow.add_node("decide", decide_next)
+    workflow.add_edge("interpret_prompt", "execute_tool")
+    workflow.add_edge("execute_tool", "analyze_result")
+    workflow.add_edge("analyze_result", "decide")
+    workflow.add_conditional_edges("decide", {"repeat": "interpret_prompt", "end": END})
+    workflow.set_entry_point("interpret_prompt")
+    agent_executor = workflow.compile()
 
 # Modelos Pydantic para la API HTTP
 class PromptRequest(BaseModel):
@@ -262,12 +300,13 @@ async def run_agent(request: PromptRequest = Body(...)):
     global agent_log
     agent_log = [f"Prompt recibido: {prompt}"]
     try:
-        if agent is None:
+        if agent_executor is None:
             raise RuntimeError(
                 "OPENAI_API_KEY no configurada. Configúrala y reinicia la aplicación."
             )
         # Ejecutar el agente con el prompt del usuario
-        result = agent.invoke({"input": prompt})
+        result_state = agent_executor.invoke({"input": prompt})
+        result = result_state.get("result") if isinstance(result_state, dict) else result_state
         if not isinstance(result, str):
             result = str(result)
         agent_log.append(f"Respuesta final del agente: {result}")
