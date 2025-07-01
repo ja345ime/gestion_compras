@@ -1,274 +1,271 @@
+# main.py
 import os
 import subprocess
-import json
-from typing import List
-
 from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 
+# Cargar la API de OpenAI y herramientas de LangChain
 try:
-    import openai  # type: ignore
-except Exception:  # pragma: no cover - OpenAI puede no estar instalado
-    openai = None  # type: ignore
+    from langchain.chat_models import ChatOpenAI
+    from langchain.agents import initialize_agent, AgentType
+    from langchain.tools import tool
+except ImportError as e:
+    raise ImportError("Necesitas instalar langchain y sus dependencias para ejecutar este agente.") 
 
-try:
-    from dotenv import load_dotenv
-except Exception:  # pragma: no cover - dotenv es opcional
-    def load_dotenv(*args, **kwargs):
-        return None
+# --- Definición de herramientas (Tools) para el agente ---
+# Se utiliza el decorador @tool de LangChain para permitir múltiples argumentos (OpenAI function-calling).
+agent_log = []  # Registro global de acciones del agente (se reinicia en cada petición)
 
-
-
-# Cargar variables de entorno desde .env (para la API Key de OpenAI, etc.)
-load_dotenv()
-
-app = FastAPI(
-    title="Agente de IA para Administración de Servidor",
-    description="API para un agente de IA que puede interactuar con un servidor, generar código y resolver problemas.",
-    version="0.1.0"
-)
-print("✅ main.py SE ESTÁ EJECUTANDO")
-# --- Configuración del LLM (Modelo de Lenguaje Grande) ---
-# Es crucial que tengas una API Key válida para un LLM.
-# Si no tienes una, puedes usar un modelo local o simularlo.
-# Para GPT-4, necesitarías la API Key de OpenAI.
-# Si la variable de entorno OPENAI_API_KEY no está configurada, esto fallará.
-# Para este ejemplo, usaremos la API de OpenAI directamente.
-# Si quieres simular, puedes crear una clase que imite el comportamiento del modelo.
-# Por ejemplo:
-# class MockLLM:
-#     def invoke(self, messages):
-#         print(f"MockLLM recibió: {messages}")
-#         # Simula una respuesta simple
-#         return AIMessage(content="Simulando una respuesta del LLM.")
-# llm = MockLLM()
-
-# Intenta cargar la API Key de OpenAI. Si no está, advierte.
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    print("ADVERTENCIA: La variable de entorno OPENAI_API_KEY no está configurada.")
-    print("El agente intentará usarla, pero fallará si no es válida.")
-    print("Para un uso real, asegúrate de configurarla o usa un LLM local/alternativo.")
-    print("Puedes obtener una en https://platform.openai.com/account/api-keys")
-
-if openai and openai_api_key:
-    openai.api_key = openai_api_key
-
-
-# --- Definición de Herramientas para el Agente ---
-# Estas funciones simulan las interacciones con el servidor.
-# NOTA IMPORTANTE: Para un entorno de producción, la ejecución de comandos Bash (run_bash)
-# y la edición de archivos DEBEN hacerse a través de SSH (usando librerías como paramiko o pexpect)
-# y con permisos muy limitados para el usuario SSH del agente.
-# Aquí se usan subprocess para simplificar la demostración local.
-
+@tool
 def run_bash(cmd: str) -> str:
-    """
-    Ejecuta un comando Bash en el servidor y devuelve su salida.
-    ADVERTENCIA: Para un entorno real, esto DEBERÍA usar SSH (paramiko/pexpect)
-    con permisos limitados, no subprocess localmente.
-    Ejemplo: run_bash("ls -la /var/www/html")
-    """
+    """Ejecuta un comando Bash en el servidor y devuelve su salida."""
+    global agent_log
+    agent_log.append(f"→ Ejecutando comando Bash: {cmd}")
     try:
-        print(f"Ejecutando comando Bash: {cmd}")
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
-        return f"Comando ejecutado con éxito:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        output = f"Comando ejecutado con éxito:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        agent_log.append(f"✔ Resultado run_bash:\n{output}")
+        return output
     except subprocess.CalledProcessError as e:
-        return f"Error al ejecutar comando Bash:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}\nError: {e}"
+        error_msg = (f"Error al ejecutar comando Bash:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}\nError: {e}")
+        agent_log.append(f"✖ Error en run_bash:\n{error_msg}")
+        return error_msg
     except Exception as e:
-        return f"Error inesperado al ejecutar comando Bash: {e}"
+        error_msg = f"Error inesperado al ejecutar comando Bash: {e}"
+        agent_log.append(f"✖ Error en run_bash (inesperado): {error_msg}")
+        return error_msg
 
-def edit_file(path: str, content: str, mode: str = "overwrite") -> str:
-    """
-    Modifica el contenido de un archivo en la ruta especificada.
-    'mode' puede ser 'overwrite' (sobrescribe el archivo), 'append' (añade al final) o 'insert_line_after' (inserta después de una línea específica).
-    Para 'insert_line_after', 'content' debe ser un JSON con {'line_to_find': '...', 'new_content': '...'}.
-    Ejemplo: edit_file("config.py", "DEBUG = False", mode="overwrite")
-    Ejemplo: edit_file("logs/app.log", "Nuevo log entry", mode="append")
-    Ejemplo: edit_file("index.html", '{"line_to_find": "<div id=\\"app\\">", "new_content": "  <button>Nuevo Botón</button>"}', mode="insert_line_after")
-    """
+@tool
+def overwrite_file(path: str, content: str) -> str:
+    """Sobrescribe el archivo especificado con el contenido proporcionado."""
+    global agent_log
+    agent_log.append(f"→ Sobrescribiendo archivo: {path}")
     try:
-        if mode == "overwrite":
-            with open(path, 'w') as f:
-                f.write(content)
-            return f"Archivo '{path}' sobrescrito con éxito."
-        elif mode == "append":
-            with open(path, 'a') as f:
-                f.write("\n" + content)
-            return f"Contenido añadido al final del archivo '{path}'."
-        elif mode == "insert_line_after":
-            try:
-                params = json.loads(content)
-                line_to_find = params['line_to_find']
-                new_content = params['new_content']
-            except json.JSONDecodeError:
-                return "Error: Para 'insert_line_after', 'content' debe ser un JSON válido."
-
-            with open(path, 'r') as f:
-                lines = f.readlines()
-
-            new_lines = []
-            inserted = False
-            for line in lines:
-                new_lines.append(line)
-                if line_to_find in line and not inserted:
-                    new_lines.append(new_content + "\n")
-                    inserted = True
-            
-            if not inserted:
-                return f"Advertencia: No se encontró la línea '{line_to_find}' en '{path}'. No se insertó el contenido."
-
-            with open(path, 'w') as f:
-                f.writelines(new_lines)
-            return f"Contenido insertado después de '{line_to_find}' en '{path}'."
-        else:
-            return f"Modo de edición '{mode}' no soportado. Use 'overwrite', 'append' o 'insert_line_after'."
+        with open(path, 'w') as f:
+            f.write(content)
+        result = f"Archivo '{path}' sobrescrito con éxito."
+        agent_log.append(f"✔ Resultado overwrite_file: {result}")
+        return result
     except FileNotFoundError:
-        return f"Error: Archivo '{path}' no encontrado."
+        error_msg = f"Error: Archivo '{path}' no encontrado."
+        agent_log.append(f"✖ Error en overwrite_file: {error_msg}")
+        return error_msg
     except Exception as e:
-        return f"Error al editar archivo '{path}': {e}"
+        error_msg = f"Error al sobrescribir archivo '{path}': {e}"
+        agent_log.append(f"✖ Error en overwrite_file: {error_msg}")
+        return error_msg
 
+@tool
+def append_file(path: str, content: str) -> str:
+    """Agrega el texto proporcionado al final del archivo especificado."""
+    global agent_log
+    agent_log.append(f"→ Agregando contenido al final del archivo: {path}")
+    try:
+        with open(path, 'a') as f:
+            f.write("\n" + content)
+        result = f"Contenido añadido al final del archivo '{path}'."
+        agent_log.append(f"✔ Resultado append_file: {result}")
+        return result
+    except FileNotFoundError:
+        error_msg = f"Error: Archivo '{path}' no encontrado."
+        agent_log.append(f"✖ Error en append_file: {error_msg}")
+        return error_msg
+    except Exception as e:
+        error_msg = f"Error al agregar contenido al archivo '{path}': {e}"
+        agent_log.append(f"✖ Error en append_file: {error_msg}")
+        return error_msg
+
+@tool
+def insert_line_after(path: str, line_to_find: str, new_line: str) -> str:
+    """Inserta una nueva línea en el archivo dado, después de la primera aparición de 'line_to_find'."""
+    global agent_log
+    agent_log.append(f"→ Insertando línea en {path} después de '{line_to_find}'")
+    try:
+        with open(path, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        error_msg = f"Error: Archivo '{path}' no encontrado."
+        agent_log.append(f"✖ Error en insert_line_after: {error_msg}")
+        return error_msg
+    except Exception as e:
+        error_msg = f"Error al leer archivo '{path}': {e}"
+        agent_log.append(f"✖ Error en insert_line_after: {error_msg}")
+        return error_msg
+    new_lines = []
+    inserted = False
+    for line in lines:
+        new_lines.append(line)
+        if line_to_find in line and not inserted:
+            new_lines.append(new_line + ("\n" if not new_line.endswith("\n") else ""))
+            inserted = True
+    if not inserted:
+        msg = f"Advertencia: No se encontró la línea '{line_to_find}' en '{path}'. No se insertó el contenido."
+        agent_log.append(f"✔ Resultado insert_line_after: {msg}")
+        return msg
+    try:
+        with open(path, 'w') as f:
+            f.writelines(new_lines)
+        result = f"Contenido insertado después de '{line_to_find}' en '{path}'."
+        agent_log.append(f"✔ Resultado insert_line_after: {result}")
+        return result
+    except Exception as e:
+        error_msg = f"Error al escribir en el archivo '{path}': {e}"
+        agent_log.append(f"✖ Error en insert_line_after: {error_msg}")
+        return error_msg
+
+@tool
 def restart_service(service_name: str) -> str:
-    """
-    Reinicia un servicio del sistema (ej. gunicorn, nginx, apache2).
-    ADVERTENCIA: Esto requiere permisos de sudo en el servidor para el usuario que ejecuta el agente.
-    Ejemplo: restart_service("gunicorn")
-    """
+    """Reinicia un servicio del sistema usando systemctl (requiere permisos adecuados)."""
+    global agent_log
+    agent_log.append(f"→ Reiniciando servicio: {service_name}")
     try:
-        print(f"Intentando reiniciar servicio: {service_name}")
-        # Usar sudo para reiniciar servicios. Esto requiere configuración previa de sudoers.
-        result = subprocess.run(['sudo', 'systemctl', 'restart', service_name], capture_output=True, text=True, check=True)
-        return f"Servicio '{service_name}' reiniciado con éxito:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        result = subprocess.run(['sudo', 'systemctl', 'restart', service_name],
+                                 capture_output=True, text=True, check=True)
+        output = (f"Servicio '{service_name}' reiniciado con éxito:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
+        agent_log.append(f"✔ Resultado restart_service:\n{output}")
+        return output
     except subprocess.CalledProcessError as e:
-        return f"Error al reiniciar servicio '{service_name}':\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}\nError: {e}"
+        error_msg = (f"Error al reiniciar servicio '{service_name}':\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}\nError: {e}")
+        agent_log.append(f"✖ Error en restart_service: {error_msg}")
+        return error_msg
     except Exception as e:
-        return f"Error inesperado al reiniciar servicio '{service_name}': {e}"
+        error_msg = f"Error inesperado al reiniciar servicio '{service_name}': {e}"
+        agent_log.append(f"✖ Error en restart_service: {error_msg}")
+        return error_msg
 
+@tool
 def run_tests(test_path: str = "tests/") -> str:
-    """
-    Ejecuta los tests de Pytest en la ruta especificada (por defecto 'tests/').
-    Devuelve la salida completa de Pytest.
-    Ejemplo: run_tests("tests/my_app_tests.py")
-    """
+    """Ejecuta PyTest en la ruta especificada (por defecto 'tests/') y devuelve la salida."""
+    global agent_log
+    agent_log.append(f"→ Ejecutando tests Pytest en: {test_path}")
     try:
-        print(f"Ejecutando tests en: {test_path}")
-        # Simula la creación de un archivo de test si no existe para la demo
+        # Si no existe la carpeta de tests, creamos un test de ejemplo (para demostración)
         if not os.path.exists(test_path):
-            os.makedirs(test_path)
-            with open(os.path.join(test_path, "test_example.py"), "w") as f:
-                f.write("""
+            os.makedirs(test_path, exist_ok=True)
+        example_test = os.path.join(test_path, "test_example.py")
+        if not os.path.exists(example_test):
+            with open(example_test, "w") as f:
+                f.write('''\
 def test_example_success():
     assert True
 
 def test_example_failure():
-    assert False # Este test fallará para demostrar la corrección
-""")
-            print(f"Creado archivo de test de ejemplo en {test_path}/test_example.py")
-
-        result = subprocess.run(['pytest', test_path], capture_output=True, text=True, check=False) # check=False para capturar fallos
+    assert False  # Este test fallará para demostrar la corrección
+''')
+            agent_log.append(f"Creado archivo de test de ejemplo: {example_test}")
+        result = subprocess.run(['pytest', test_path], capture_output=True, text=True)
         if result.returncode == 0:
-            return f"Tests ejecutados con éxito:\n{result.stdout}"
+            output = f"Tests ejecutados con éxito:\n{result.stdout}"
         else:
-            return f"Tests ejecutados con fallos (código de salida {result.returncode}):\nSTDOUT:\n{result.stdout}\nSTDERR:\n{e.stderr}"
+            output = (f"Tests ejecutados con fallos (código {result.returncode}):\n"
+                      f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
+        agent_log.append(f"✔ Resultado run_tests:\n{output}")
+        return output
     except FileNotFoundError:
-        return "Error: pytest no encontrado. Asegúrate de que esté instalado (pip install pytest)."
+        error_msg = "Error: pytest no encontrado. Asegúrate de que esté instalado."
+        agent_log.append(f"✖ Error en run_tests: {error_msg}")
+        return error_msg
     except Exception as e:
-        return f"Error inesperado al ejecutar tests: {e}"
+        error_msg = f"Error inesperado al ejecutar tests: {e}"
+        agent_log.append(f"✖ Error en run_tests: {error_msg}")
+        return error_msg
 
+@tool
 def check_logs(log_path: str = "logs/app.log", num_lines: int = 100) -> str:
-    """
-    Lee las últimas N líneas de un archivo de log de aplicación.
-    Ejemplo: check_logs("logs/nginx_error.log", 50)
-    """
+    """Lee las últimas 'num_lines' líneas del archivo de log especificado."""
+    global agent_log
+    agent_log.append(f"→ Leyendo últimas {num_lines} líneas de log: {log_path}")
     try:
-        print(f"Leyendo últimas {num_lines} líneas de: {log_path}")
-        # Simula la creación de un archivo de log si no existe para la demo
         if not os.path.exists(os.path.dirname(log_path)):
-            os.makedirs(os.path.dirname(log_path))
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
         if not os.path.exists(log_path):
             with open(log_path, "w") as f:
                 f.write("Log de prueba 1\nLog de prueba 2\nLog de prueba 3\n")
-            print(f"Creado archivo de log de ejemplo en {log_path}")
-
+            agent_log.append(f"Creado archivo de log de ejemplo: {log_path}")
         with open(log_path, 'r') as f:
             lines = f.readlines()
-        return "".join(lines[-num_lines:])
-    except FileNotFoundError:
-        return f"Error: Archivo '{path}' no encontrado."
+        output = "".join(lines[-num_lines:]) if num_lines > 0 else ""
+        agent_log.append(f"✔ Resultado check_logs:\n{output}")
+        return output
     except Exception as e:
-        return f"Error inesperado al leer log: {e}"
+        error_msg = f"Error al leer el log '{log_path}': {e}"
+        agent_log.append(f"✖ Error en check_logs: {error_msg}")
+        return error_msg
 
+@tool
+def read_file(path: str) -> str:
+    """Lee el contenido completo de un archivo de texto."""
+    global agent_log
+    agent_log.append(f"→ Leyendo archivo completo: {path}")
+    try:
+        with open(path, 'r') as f:
+            content = f.read()
+        agent_log.append(f"✔ Resultado read_file: (contenido leído, {len(content)} bytes)")
+        return content
+    except FileNotFoundError:
+        error_msg = f"Error: Archivo '{path}' no encontrado."
+        agent_log.append(f"✖ Error en read_file: {error_msg}")
+        return error_msg
+    except Exception as e:
+        error_msg = f"Error al leer archivo '{path}': {e}"
+        agent_log.append(f"✖ Error en read_file: {error_msg}")
+        return error_msg
+
+# Lista de herramientas disponibles para el agente
+tools = [run_bash, overwrite_file, append_file, insert_line_after,
+         restart_service, run_tests, check_logs, read_file]
+
+# --- Configuración del modelo de lenguaje (LLM) y agente ---
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    print("ADVERTENCIA: OPENAI_API_KEY no está configurada. Debes proporcionarla para usar el LLM.")
+# Usamos GPT-4 (o GPT-3.5) a través de la API de OpenAI
+llm = ChatOpenAI(model_name=os.getenv("OPENAI_MODEL", "gpt-4-0613"), temperature=0, openai_api_key=openai_api_key)
+# Inicializar el agente con las herramientas definidas, usando el agente de funciones de OpenAI
+agent = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=False)
+
+# Modelos Pydantic para la API HTTP
 class PromptRequest(BaseModel):
     prompt: str
-
 
 class AgentResponse(BaseModel):
     status: str
     message: str
-    full_log: List[str]
+    full_log: list[str]
 
+# Inicializar la aplicación FastAPI
+app = FastAPI(
+    title="Agente IA Autónomo para Desarrollo/Mantenimiento",
+    description="Agente de IA que puede leer/escribir archivos, ejecutar comandos de sistema, correr tests y analizar logs para mantener una app Flask.",
+    version="0.2.0"
+)
 
 @app.post("/run-agent", response_model=AgentResponse)
 async def run_agent(request: PromptRequest = Body(...)):
-    """Ejecuta el agente de IA con el prompt dado y devuelve el resultado."""
+    """Endpoint HTTP para ejecutar el agente con un prompt dado."""
     prompt = request.prompt
-    full_log = [f"Prompt recibido: {prompt}"]
-
+    # Reiniciar el log de acciones por cada solicitud
+    global agent_log
+    agent_log = [f"Prompt recibido: {prompt}"]
     try:
-        if openai and openai_api_key:
-            client = openai.OpenAI(api_key=openai_api_key)
-            respuesta = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            mensaje = respuesta.choices[0].message.content
-        else:
-            mensaje = f"Simulación de respuesta para: {prompt}"
-        full_log.append(mensaje)
-        return AgentResponse(status="success", message=mensaje, full_log=full_log)
+        # Ejecutar el agente con el prompt del usuario
+        result = agent.run(prompt)
+        if not isinstance(result, str):
+            result = str(result)
+        agent_log.append(f"Respuesta final del agente: {result}")
+        return AgentResponse(status="success", message=result, full_log=agent_log)
     except Exception as e:
-        print(f"Error en el agente: {e}")
-        raise HTTPException(status_code=500, detail=f"Error interno del agente: {e}")
+        error_msg = f"Error interno del agente: {e}"
+        agent_log.append(f"✖ {error_msg}")
+        # Responder con un error HTTP 500 y el detalle
+        raise HTTPException(status_code=500, detail=error_msg)
 
-# --- Instrucciones para ejecutar el servidor FastAPI ---
-# Para ejecutar esta API, guarda el código como `main.py` y luego en tu terminal:
-# 1. Asegúrate de tener un entorno virtual limpio:
-#    deactivate # Si estás en un entorno virtual
-#    rm -rf venv_agente # Elimina el entorno virtual existente
-#    rm -rf ~/.cache/pip # Limpia la caché global de pip
-#    rm -rf __pycache__ # Elimina cachés de Python
-#    python3 -m venv venv_agente # Crea un nuevo entorno virtual
-#    source venv_agente/bin/activate # Activa el entorno virtual
-#
-# 2. Instala las dependencias más recientes:
-#    pip install fastapi uvicorn langchain langchain-openai langgraph python-dotenv
-#    (Si usas paramiko para SSH: pip install paramiko)
-#    (Si usas pexpect para SSH: pip install pexpect)
-#    (Si usas pytest para tests: pip install pytest)
-#
-# 3. Crea un archivo `.env` en la misma carpeta con tu API Key de OpenAI:
-#    OPENAI_API_KEY="tu_api_key_de_openai_aqui"
-#
-# 4. Ejecuta el servidor:
-#    uvicorn main:app --host 0.0.0.0 --port 8001
-#
-# 5. Podrás probarlo con una herramienta como Postman, Insomnia, o directamente desde N8N
-#    en la URL http://localhost:8001/run-agent con un POST request.
-
-# --- Ejemplo de uso (desde N8N o CURL) ---
-# POST http://localhost:8001/run-agent
-# Headers: Content-Type: application/json
-# Body:
-# {
-#   "prompt": "Agrega un nuevo h1 con el texto 'Bienvenido a mi App' en la línea después de <div id=\"app\"> en el archivo index.html. Luego, ejecuta los tests y reinicia el servicio de gunicorn."
-# }
-#
-# O un prompt más simple:
-# {
-#   "prompt": "Lee las últimas 50 líneas del log de la aplicación en logs/app.log"
-# }
-#
-# O para simular un fallo y corrección (si el test_example_failure está activo):
-# {
-#   "prompt": "Ejecuta los tests de la aplicación. Si hay fallos, dime qué pasó."
-# }
+# --- Instrucciones de ejecución ---
+# 1. Instala las dependencias requeridas:
+#    pip install fastapi uvicorn langchain openai langchain-openai langgraph python-dotenv pytest
+# 2. Define tu clave de API de OpenAI en una variable de entorno o en un archivo .env como OPENAI_API_KEY="TU_API_KEY".
+# 3. Inicia la aplicación:
+#    uvicorn main:app --host 0.0.0.0 --port 8000
+# 4. Envía solicitudes POST al endpoint /run-agent con JSON {"prompt": "..."}.
+#    Ejemplo:
+#       curl -X POST "http://localhost:8000/run-agent" -H "Content-Type: application/json" -d '{"prompt": "Lee las últimas 50 líneas de logs/app.log"}'
