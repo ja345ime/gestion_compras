@@ -195,7 +195,7 @@ if openai_api_key:
     )
 
     # Crear el agente con el LLM y las herramientas disponibles
-    agent = create_react_agent(tools=tools, llm=llm)
+    agent = create_react_agent(llm, tools)
 
     class AgentState(TypedDict):
         input: str
