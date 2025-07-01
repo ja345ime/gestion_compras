@@ -8,7 +8,23 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+
 @pytest.fixture(scope='module')
+def crear_usuario():
+    def _crear_usuario(nombre="Test", email="test@example.com", rol="Solicitante"):
+        usuario = Usuario(nombre=nombre, email=email, rol=rol)
+        db.session.add(usuario)
+        db.session.commit()
+        return usuario
+    return _crear_usuario
+
+
+
+
+
+
+
+
 def test_client():
     flask_app = create_app(config_class=TestConfig)
 
