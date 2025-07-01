@@ -279,17 +279,18 @@ else:
     # Definición del prompt para el agente ReAct
     
     # create_react_agent ya incluye placeholders para `tools` y `agent_scratchpad`
+    # Simplificamos el prompt siguiendo las indicaciones de Codex
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario a diagnosticar, corregir, implementar funcionalidades y vistas, ejecutar pruebas y revisar logs en un entorno de servidor. Piensa paso a paso y usa las herramientas de forma efectiva para lograr el objetivo."),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}") # Necesario para el historial de pensamiento del agente
+        ("system", "Eres un asistente experto."),
+        ("human", "{input}")
     ])
 
     # Crear el agente con el LLM y las herramientas disponibles
     # create_react_agent es una Runnable, no necesita ser envuelta en StateGraph para su uso básico
     agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
     agent_runnable = agent_runnable.with_config({"run_name": "agente"})
-    agent_runnable = RunnableLambda(lambda x: {"input": x["input"]}) | agent_runnable
+    # Asegura que 'prompt' se renombre a 'input' antes de entrar al agente
+    agent_runnable = RunnableLambda(lambda x: {"input": x["prompt"]}) | agent_runnable
 
     # Definimos la cadena de procesamiento para el nodo del agente
     # Esta cadena toma el 'messages' del AgentState y lo transforma en el 'input' y 'agent_scratchpad'
