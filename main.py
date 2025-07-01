@@ -296,11 +296,8 @@ else:
     # create_react_agent ya incluye placeholders para `tools` y `agent_scratchpad`
     # Simplificamos el prompt siguiendo las indicaciones de Codex
     prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar. Piensa paso a paso.",
-        ),
-        ("human", "{{input}}"),
+        ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar. Piensa paso a paso."),
+        ("human", "{input}"),
         ("placeholder", "{agent_scratchpad}")
     ])
 
@@ -308,8 +305,9 @@ else:
     # create_react_agent es una Runnable, no necesita ser envuelta en StateGraph para su uso básico
     agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
     agent_runnable = agent_runnable.with_config({"run_name": "agente"})
-    agent_runnable = RunnableLambda(lambda x: {"input": x["messages"][-1].content}) | agent_runnable
+    
     # Definimos la cadena de procesamiento para el nodo del agente
+    agent_runnable = RunnableLambda(lambda x: {"input": x["messages"][-1].content}) | agent_runnable
     # Esta cadena toma el 'messages' del AgentState y lo transforma en el 'input' y 'agent_scratchpad'
     # que espera el agent_runnable.
     agent_node_chain = (
@@ -320,6 +318,7 @@ else:
             ]
         )
         | agent_runnable
+        
     )
 
     # Construcción del grafo con LangGraph
@@ -380,9 +379,18 @@ async def run_agent(req: PromptRequest):
         # Convertir el campo 'prompt' en la estructura que espera el agente
         prompt = req.prompt
         messages = [HumanMessage(content=prompt)]
-        inputs = {"messages": messages, "steps": []}
+        inputs = {
+            "input": prompt,
+            "messages": messages,
+            "steps": []
+        }
+        print("=== DEBUG PROMPT ENVIADO ===")
+        print(prompt)
+        print("=== INPUTS ENVIADOS AL AGENTE ===")
+        print(inputs)
 
         result = agent_executor.invoke(inputs)
         return {"respuesta": result["messages"][-1].content}
     except Exception as e:
         return JSONResponse(content={"detail": f"Error interno del agente: {e}"}, status_code=500)
+
