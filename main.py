@@ -276,6 +276,7 @@ else:
     )
 
     # Definición del prompt para el agente ReAct
+    
     # create_react_agent ya incluye placeholders para `tools` y `agent_scratchpad`
     prompt = ChatPromptTemplate.from_messages([
         ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario a diagnosticar, corregir, implementar funcionalidades y vistas, ejecutar pruebas y revisar logs en un entorno de servidor. Piensa paso a paso y usa las herramientas de forma efectiva para lograr el objetivo."),
@@ -286,35 +287,25 @@ else:
     # Crear el agente con el LLM y las herramientas disponibles
     # create_react_agent es una Runnable, no necesita ser envuelta en StateGraph para su uso básico
     agent_runnable = create_react_agent(llm, tools=tools, prompt=prompt)
+    agent_runnable = agent_runnable.with_config({"run_name": "agente"})
+    agent_runnable = RunnableLambda(lambda x: {"input": x["input"]}) | agent_runnable
 
-    # Función que se ejecutará como nodo en el grafo
-    def run_agent_node(state: AgentState) -> Dict[str, Any]:
-        # El último mensaje en el historial del estado es el HumanMessage actual.
-        # Todos los mensajes anteriores (AI y Tool) forman el agent_scratchpad.
-        
-        # Extraer el input (contenido del último HumanMessage)
-        # Se asume que el último mensaje siempre es un HumanMessage que representa el input actual
-        current_human_input = state["messages"][-1].content
-        
-        # El agent_scratchpad son todos los mensajes anteriores al último HumanMessage
-        # que son de tipo AIMessage o ToolMessage.
-        agent_scratchpad_messages = [
-            msg for msg in state["messages"][:-1] if isinstance(msg, (AIMessage, ToolMessage))
-        ]
-
-        # Invocar el agente con los parámetros esperados por create_react_agent
-        result = agent_runnable.invoke({
-            "input": current_human_input,
-            "agent_scratchpad": agent_scratchpad_messages
-        })
-        
-        # El resultado del agente (AIMessage o AIMessage con tool_calls) se añade al historial
-        return {"messages": state["messages"] + [result]}
-
+    # Definimos la cadena de procesamiento para el nodo del agente
+    # Esta cadena toma el 'messages' del AgentState y lo transforma en el 'input' y 'agent_scratchpad'
+    # que espera el agent_runnable.
+    agent_node_chain = (
+        RunnablePassthrough.assign(
+            input=lambda x: x["messages"][-1].content, # El input es el contenido del último HumanMessage
+            agent_scratchpad=lambda x: [
+                msg for msg in x["messages"][:-1] if isinstance(msg, (AIMessage, ToolMessage))
+            ], # El scratchpad son los mensajes anteriores que no son HumanMessage
+        )
+        | agent_runnable # Luego pasamos esto al agente ReAct
+    )
 
     # Construcción del grafo con LangGraph
     workflow = StateGraph(AgentState)
-    workflow.add_node("agent_node", run_agent_node) # Nodo para el agente
+    workflow.add_node("agent_node", agent_node_chain) # Nodo para el agente, ahora es una cadena
     workflow.add_node("tool_node", execute_tools) # Nodo para ejecutar herramientas
 
     # Función para decidir el siguiente paso del grafo

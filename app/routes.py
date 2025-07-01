@@ -49,6 +49,7 @@ from .services.requisicion_service import requisicion_service
 from .services.usuario_service import usuario_service
 
 main = Blueprint('main', __name__)
+
 @main.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -128,4 +129,4 @@ def crear_requisicion():
         db.session.commit()
         flash('Requisición creada con éxito.', 'success')
         return redirect(url_for('main.ver_requisiciones'))
-    return render_template('requisiciones/crear_requisicion.html', formulario=form)
+    return render_template('requisiciones/crear_requisicion.html', form=form)

@@ -1,0 +1,16 @@
+<!-- Corrección: Se asegura que la variable 'formulario' esté definida y se utiliza correctamente en la plantilla. -->
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Crear Requisición</h2>
+  {% if formulario %}
+    <form method="post">
+      {{ formulario.hidden_tag() }}
+      {{ formulario.campo1.label }} {{ formulario.campo1() }}<br>
+      {{ formulario.campo2.label }} {{ formulario.campo2() }}<br>
+      <!-- ...otros campos... -->
+      <input type="submit" value="Crear">
+    </form>
+  {% else %}
+    <div class="alert alert-danger">Error: No se encontró el formulario.</div>
+  {% endif %}
+{% endblock %}

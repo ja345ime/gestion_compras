@@ -1,0 +1,10 @@
+No es posible realizar un análisis de cumplimiento porque el PROMPT original y el CAMBIO realizado no contienen información. Ambos están completamente vacíos.
+
+Para poder verificar si se cumplió lo solicitado, se necesita:
+
+1. Un PROMPT original con una instrucción clara sobre lo que debe hacerse.
+2. Un CAMBIO realizado que se pueda comparar con esa instrucción.
+
+Dado que no hay datos en ninguno de los dos campos, no se puede proceder con la evaluación.
+
+❌ CAMBIO FALLIDO

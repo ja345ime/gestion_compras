@@ -1,13 +1,20 @@
-<!-- Corrección: Se asegura que la variable 'formulario' esté definida y se utiliza correctamente en la plantilla. -->
+<!-- Corrección: Se asegura que la variable 'formulario' esté definida correctamente como 'form' y se utiliza en la plantilla. -->
 {% extends 'base.html' %}
 {% block content %}
   <h2>Crear Requisición</h2>
-  {% if formulario %}
+  {% if form %}
     <form method="post">
-      {{ formulario.hidden_tag() }}
-      {{ formulario.campo1.label }} {{ formulario.campo1() }}<br>
-      {{ formulario.campo2.label }} {{ formulario.campo2() }}<br>
-      <!-- ...otros campos... -->
+      {{ form.hidden_tag() }}
+      {{ form.nombre_solicitante.label }} {{ form.nombre_solicitante() }}<br>
+      {{ form.departamento_nombre.label }} {{ form.departamento_nombre() }}<br>
+      {{ form.prioridad.label }} {{ form.prioridad() }}<br>
+      {{ form.observaciones.label }} {{ form.observaciones() }}<br>
+      <!-- Detalles -->
+      {% for detalle in form.detalles %}
+        {{ detalle.producto.label }} {{ detalle.producto() }}<br>
+        {{ detalle.cantidad.label }} {{ detalle.cantidad() }}<br>
+        {{ detalle.unidad_medida.label }} {{ detalle.unidad_medida() }}<br>
+      {% endfor %}
       <input type="submit" value="Crear">
     </form>
   {% else %}
