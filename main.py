@@ -21,7 +21,7 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, BaseMe
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import create_react_agent
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough # Importar RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda  # Importar RunnableLambda
 
 # --- Definición manual de ToolInvocation para evitar ModuleNotFoundError ---
 # Si 'from langgraph.schema import ToolInvocation' falla constantemente,
@@ -355,7 +355,7 @@ app = FastAPI(
 async def run_agent(req: PromptRequest):
     """Execute the agent using a JSON body with a 'prompt' field."""
     if agent_executor is None:
-        return JSONResponse(content={"detail": "OPENAI_API_KEY no configurada o LLM no inicializado."}, status_code=500)
+        return JSONResponse(content={"detail": "OPENAI_API_KEY no configurada"}, status_code=500)
 
     try:
         # Convertir el campo 'prompt' en la estructura que espera el agente
