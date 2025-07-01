@@ -12,7 +12,7 @@ load_dotenv()
 # Cargar la API de OpenAI y herramientas de LangChain
 try:
     from langchain_openai import ChatOpenAI
-    from langchain.tools import tool
+    from langchain_core.tools import tool
     from langgraph.graph import StateGraph, END
     from langgraph.prebuilt import create_react_agent
     from langchain_core.runnables import RunnableLambda
@@ -24,6 +24,7 @@ except ImportError as e:
 # para permitir múltiples argumentos (OpenAI function-calling).
 agent_log = []  # Registro global de acciones del agente (se reinicia en cada petición)
 
+@tool
 def run_bash(cmd: str) -> str:
     """Ejecuta un comando Bash en el servidor y devuelve su salida."""
     global agent_log
@@ -42,6 +43,7 @@ def run_bash(cmd: str) -> str:
         agent_log.append(f"✖ Error en run_bash (inesperado): {error_msg}")
         return error_msg
 
+@tool
 def overwrite_file(path: str, content: str) -> str:
     """Sobrescribe el archivo especificado con el contenido proporcionado."""
     global agent_log
@@ -61,6 +63,7 @@ def overwrite_file(path: str, content: str) -> str:
         agent_log.append(f"✖ Error en overwrite_file: {error_msg}")
         return error_msg
 
+@tool
 def append_file(path: str, content: str) -> str:
     """Agrega el texto proporcionado al final del archivo especificado."""
     global agent_log
@@ -80,6 +83,7 @@ def append_file(path: str, content: str) -> str:
         agent_log.append(f"✖ Error en append_file: {error_msg}")
         return error_msg
 
+@tool
 def insert_line_after(path: str, line_to_find: str, new_line: str) -> str:
     """Inserta una nueva línea en el archivo dado, después de la primera aparición de 'line_to_find'."""
     global agent_log
@@ -117,6 +121,7 @@ def insert_line_after(path: str, line_to_find: str, new_line: str) -> str:
         agent_log.append(f"✖ Error en insert_line_after: {error_msg}")
         return error_msg
 
+@tool
 def restart_service(service_name: str) -> str:
     """Reinicia un servicio del sistema usando systemctl (requiere permisos adecuados)."""
     global agent_log
@@ -136,6 +141,7 @@ def restart_service(service_name: str) -> str:
         agent_log.append(f"✖ Error en restart_service: {error_msg}")
         return error_msg
 
+@tool
 def run_tests(test_path: str = "tests/") -> str:
     """Ejecuta PyTest en la ruta especificada (por defecto 'tests/') y devuelve la salida."""
     global agent_log
@@ -172,6 +178,7 @@ def test_example_failure():
         agent_log.append(f"✖ Error en run_tests: {error_msg}")
         return error_msg
 
+@tool
 def check_logs(log_path: str = "logs/app.log", num_lines: int = 100) -> str:
     """Lee las últimas 'num_lines' líneas del archivo de log especificado."""
     global agent_log
@@ -193,6 +200,7 @@ def check_logs(log_path: str = "logs/app.log", num_lines: int = 100) -> str:
         agent_log.append(f"✖ Error en check_logs: {error_msg}")
         return error_msg
 
+@tool
 def read_file(path: str) -> str:
     """Lee el contenido completo de un archivo de texto."""
     global agent_log
@@ -213,14 +221,14 @@ def read_file(path: str) -> str:
 
 # Lista de herramientas disponibles para el agente
 tools = [
-    tool(run_bash),
-    tool(overwrite_file),
-    tool(append_file),
-    tool(insert_line_after),
-    tool(restart_service),
-    tool(run_tests),
-    tool(check_logs),
-    tool(read_file),
+    run_bash,
+    overwrite_file,
+    append_file,
+    insert_line_after,
+    restart_service,
+    run_tests,
+    check_logs,
+    read_file,
 ]
 
 # --- Configuración del modelo de lenguaje (LLM) y agente ---
