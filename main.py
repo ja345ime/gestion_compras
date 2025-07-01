@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langchain_core.runnables import RunnableLambda
+from langchain_core.prompts import ChatPromptTemplate
 
 
 # Load environment variables if a .env file is present
@@ -195,7 +196,11 @@ if openai_api_key:
     )
 
     # Crear el agente con el LLM y las herramientas disponibles
-    agent = create_react_agent(llm, tools)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "Eres un asistente para desarrollo backend con Python. Usa las herramientas disponibles para ayudar al usuario."),
+        ("human", "{input}")
+    ])
+    agent = create_react_agent(llm, tools, prompt)
 
     class AgentState(TypedDict):
         input: str
