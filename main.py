@@ -3,10 +3,14 @@ import os
 import subprocess
 from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env, si está disponible
+load_dotenv()
 
 # Cargar la API de OpenAI y herramientas de LangChain
 try:
-    from langchain.chat_models import ChatOpenAI
+    from langchain_openai import ChatOpenAI
     from langchain.agents import initialize_agent, AgentType
     from langchain.tools import tool
 except ImportError as e:
@@ -218,11 +222,21 @@ tools = [run_bash, overwrite_file, append_file, insert_line_after,
 # --- Configuración del modelo de lenguaje (LLM) y agente ---
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
-    print("ADVERTENCIA: OPENAI_API_KEY no está configurada. Debes proporcionarla para usar el LLM.")
-# Usamos GPT-4 (o GPT-3.5) a través de la API de OpenAI
-llm = ChatOpenAI(model_name=os.getenv("OPENAI_MODEL", "gpt-4-0613"), temperature=0, openai_api_key=openai_api_key)
-# Inicializar el agente con las herramientas definidas, usando el agente de funciones de OpenAI
-agent = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=False)
+    print(
+        "ADVERTENCIA: OPENAI_API_KEY no está configurada. "
+        "El agente no se inicializará hasta que proporciones la clave."
+    )
+    llm = None
+    agent = None
+else:
+    # Usamos GPT-4 (o GPT-3.5) a través de la API de OpenAI
+    llm = ChatOpenAI(
+        model_name=os.getenv("OPENAI_MODEL", "gpt-4-0613"),
+        temperature=0,
+        openai_api_key=openai_api_key,
+    )
+    # Inicializar el agente con las herramientas definidas, usando el agente de funciones de OpenAI
+    agent = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=False)
 
 # Modelos Pydantic para la API HTTP
 class PromptRequest(BaseModel):
@@ -248,6 +262,10 @@ async def run_agent(request: PromptRequest = Body(...)):
     global agent_log
     agent_log = [f"Prompt recibido: {prompt}"]
     try:
+        if agent is None:
+            raise RuntimeError(
+                "OPENAI_API_KEY no configurada. Configúrala y reinicia la aplicación."
+            )
         # Ejecutar el agente con el prompt del usuario
         result = agent.run(prompt)
         if not isinstance(result, str):
