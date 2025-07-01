@@ -4,7 +4,8 @@ import os
 import subprocess
 from typing import List, TypedDict, Union, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -353,40 +354,18 @@ app = FastAPI(
     version="0.2.0"
 )
 
-@app.post("/run-agent", response_model=AgentResponse)
-async def run_agent_endpoint(request: PromptRequest = Body(...)):
-    """Execute the agent with the provided prompt."""
+@app.post("/run-agent")
+async def run_agent(req: PromptRequest):
+    """Execute the agent using a JSON body with a 'prompt' field."""
     if agent_executor is None:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY no configurada o LLM no inicializado.")
+        return JSONResponse(content={"detail": "OPENAI_API_KEY no configurada o LLM no inicializado."}, status_code=500)
 
-    global agent_log
-    agent_log = [f"Prompt recibido: {request.prompt}"]
     try:
-        # El estado inicial para el grafo
-        # El "input" del usuario se pasa como un HumanMessage inicial
-        initial_state = {"messages": [HumanMessage(content=request.prompt)]}
-        
-        # Ejecutar el grafo del agente
-        # Iteramos sobre el stream para capturar todos los pasos del agente
-        final_state = None
-        for step_output in agent_executor.stream(initial_state):
-            # Cada 'step_output' es un diccionario con el estado del grafo en ese punto
-            # Capturamos el último estado completo
-            final_state = step_output
-            # Puedes añadir más logging aquí si quieres ver el progreso paso a paso en el log
-            # agent_log.append(f"Estado intermedio: {step_output}")
+        # Convertir el campo 'prompt' en la estructura que espera el agente
+        messages = [HumanMessage(content=req.prompt)]
+        inputs = {"messages": messages, "steps": []}
 
-        # El resultado final es el último mensaje del agente
-        if final_state and final_state.get("messages"):
-            # El último mensaje es la respuesta final del agente
-            final_message = final_state["messages"][-1]
-            result_content = final_message.content if final_message.content else "El agente completó la tarea sin una respuesta final explícita."
-            agent_log.append(f"Respuesta final del agente: {result_content}")
-            return AgentResponse(status="success", message=result_content, full_log=agent_log)
-        else:
-            return AgentResponse(status="error", message="El agente no produjo una respuesta final válida.", full_log=agent_log)
-
+        result = agent_executor.invoke(inputs)
+        return {"respuesta": result["messages"][-1].content}
     except Exception as e:
-        msg = f"Error interno del agente: {e}"
-        agent_log.append(f"✖ {msg}")
-        raise HTTPException(status_code=500, detail=msg)
+        return JSONResponse(content={"detail": f"Error interno del agente: {e}"}, status_code=500)
