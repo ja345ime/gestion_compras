@@ -171,7 +171,7 @@ def read_file(path: str) -> str:
         return msg
 
 
-# List of tools available to the agent
+# Lista de herramientas disponibles para el agente
 tools = [
     run_bash,
     overwrite_file,
