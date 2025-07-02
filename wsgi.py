@@ -9,3 +9,6 @@ with app.app_context():
     except Exception as exc:
         app.logger.warning(f"No se pudieron crear datos iniciales: {exc}")
 
+@app.route('/')
+def home():
+    return "Sistema funcionando correctamente"
