@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import shlex
 from typing import List, TypedDict, Union, Dict, Any
 
 from fastapi import FastAPI
@@ -35,6 +36,40 @@ class ToolInvocation(BaseModel):
 # Log de acciones del agente para cada solicitud (se reinicia en cada petición)
 agent_log: List[str] = []
 
+# SECURITY: Define allowed commands to prevent arbitrary command execution
+ALLOWED_COMMANDS = {
+    'ls', 'cat', 'grep', 'head', 'tail', 'wc', 'find', 'sort', 'uniq',
+    'ps', 'df', 'du', 'free', 'top', 'uptime', 'whoami', 'id',
+    'git', 'pip', 'python', 'python3', 'pytest', 'flask', 'systemctl'
+}
+
+def is_command_safe(cmd: str) -> bool:
+    """
+    Basic security check to ensure only safe commands are executed.
+    """
+    try:
+        tokens = shlex.split(cmd)
+        if not tokens:
+            return False
+        
+        base_command = tokens[0].split('/')[-1]
+        
+        if base_command not in ALLOWED_COMMANDS:
+            return False
+            
+        # Check for dangerous patterns
+        dangerous_patterns = ['rm', 'rmdir', 'mv', 'cp', 'chmod', 'chown', 
+                            'sudo', 'su', 'passwd', 'userdel', 'useradd',
+                            '>', '>>', '|', '&', ';', '$(', '`']
+        
+        for pattern in dangerous_patterns:
+            if pattern in cmd:
+                return False
+                
+        return True
+    except Exception:
+        return False
+
 # --- Definición de herramientas (Tools) para el agente ---
 # Se utiliza el decorador @tool de LangChain para permitir múltiples argumentos (OpenAI function-calling).
 
@@ -43,13 +78,30 @@ def run_bash(cmd: str) -> str:
     """Run a bash command on the server and return its output."""
     global agent_log
     agent_log.append(f"→ Ejecutando comando Bash: {cmd}")
+    
+    # SECURITY: Validate command before execution
+    if not is_command_safe(cmd):
+        msg = f"Comando no permitido por razones de seguridad: {cmd}"
+        agent_log.append(f"✖ {msg}")
+        return msg
+    
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
+        # FIXED: Use shlex.split and shell=False to prevent command injection
+        command_args = shlex.split(cmd)
+        result = subprocess.run(command_args, shell=False, capture_output=True, text=True, check=True, timeout=60)
         output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         agent_log.append(f"✔ Resultado run_bash:\n{output}")
         return output
     except subprocess.CalledProcessError as e:
         msg = f"Error al ejecutar comando Bash:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
+        agent_log.append(f"✖ {msg}")
+        return msg
+    except subprocess.TimeoutExpired:
+        msg = f"Comando excedió el tiempo límite: {cmd}"
+        agent_log.append(f"✖ {msg}")
+        return msg
+    except ValueError as e:
+        msg = f"Error parsing command: {e}"
         agent_log.append(f"✖ {msg}")
         return msg
     except Exception as e:
@@ -62,6 +114,14 @@ def leer_archivo(path: str) -> str:
     """Lee el contenido de un archivo dado su path."""
     global agent_log
     agent_log.append(f"→ Leyendo archivo: {path}")
+    
+    # SECURITY: Basic path validation to prevent directory traversal
+    import os.path
+    if '..' in path or path.startswith('/'):
+        msg = "Path no permitido por razones de seguridad"
+        agent_log.append(f"✖ {msg}")
+        return msg
+    
     try:
         with open(path, "r") as f:
             contenido = f.read()
@@ -76,6 +136,13 @@ def overwrite_file(path: str, content: str) -> str:
     """Overwrite the given file with the provided content."""
     global agent_log
     agent_log.append(f"→ Sobrescribiendo archivo: {path}")
+    
+    # SECURITY: Basic path validation
+    if '..' in path or path.startswith('/'):
+        msg = "Path no permitido por razones de seguridad"
+        agent_log.append(f"✖ {msg}")
+        return msg
+    
     try:
         with open(path, "w") as f:
             f.write(content)

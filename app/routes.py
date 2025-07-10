@@ -4,6 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime
 import os
 import pytz
+from urllib.parse import urlparse, urljoin
 
 from . import (
     db,
@@ -50,6 +51,16 @@ from .services.usuario_service import usuario_service
 
 main = Blueprint('main', __name__)
 
+def is_safe_url(target):
+    """
+    Validates that a redirect URL is safe to prevent open redirect vulnerabilities.
+    """
+    if not target:
+        return False
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
 @main.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -73,8 +84,11 @@ def login():
             registrar_intento(ip_addr, "admin", True)
             flash("Inicio de sesión como Administrador exitoso.", "success")
             app.logger.info("Usuario 'admin' (virtual) ha iniciado sesión.")
+            # FIXED: Safe URL validation for redirect
             next_page = request.args.get("next")
-            return redirect(next_page or url_for("main.index"))
+            if next_page and is_safe_url(next_page):
+                return redirect(next_page)
+            return redirect(url_for("main.index"))
 
         user = Usuario.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
@@ -87,10 +101,13 @@ def login():
                 session['session_token'] = user.session_token
                 session['prev_login'] = previous_login.isoformat() if previous_login else None
                 registrar_intento(ip_addr, user.username, True)
+                # FIXED: Safe URL validation for redirect
                 next_page = request.args.get('next')
+                if next_page and is_safe_url(next_page):
+                    return redirect(next_page)
                 flash('Inicio de sesión exitoso.', 'success')
                 app.logger.info(f"Usuario '{user.username}' inició sesión.")
-                return redirect(next_page or url_for('main.index'))
+                return redirect(url_for('main.index'))
             else:
                 flash('Esta cuenta de usuario está desactivada.', 'danger')
                 app.logger.warning(f"Intento de login de usuario desactivado: {form.username.data}")

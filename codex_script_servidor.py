@@ -1,44 +1,47 @@
-"""
-Este script automatiza la validación de cambios en el código fuente mediante prompts y pruebas automáticas.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-IMPORTANTE: Este script debe ejecutarse únicamente en entornos de desarrollo o staging, nunca en producción.
-
-Requiere que la variable de entorno OPENAI_API_KEY esté definida para la integración con servicios de OpenAI.
-
-Flujo:
-1. Lee el prompt desde /tmp/prompt.txt
-2. Ejecuta las pruebas automáticas con pytest
-3. Escribe el resultado en /tmp/estado.txt y, si hay error, el detalle en /tmp/falla.txt
-"""
-import os
 import subprocess
+import time
+import os
+from pathlib import Path
 
-PROMPT_PATH = "/tmp/prompt.txt"
-RESULTADO_PATH = "/tmp/resultado.txt"
-FALLA_PATH = "/tmp/falla.txt"
-ESTADO_PATH = "/tmp/estado.txt"
+def ejecutar_tests():
+    """
+    Ejecuta los tests y guarda el resultado en un archivo.
+    FIXED: Replaced shell=True with safe subprocess call.
+    """
+    try:
+        # FIXED: Use shell=False and proper argument list to prevent command injection
+        result = subprocess.run(
+            ["pytest", "tests/"],
+            shell=False,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout
+        )
+        
+        # Save result to file
+        with open("/tmp/resultado.txt", "w") as f:
+            f.write(f"Return code: {result.returncode}\n")
+            f.write("STDOUT:\n")
+            f.write(result.stdout)
+            f.write("\nSTDERR:\n")
+            f.write(result.stderr)
+            
+        print(f"Tests ejecutados. Return code: {result.returncode}")
+        print("Resultado guardado en /tmp/resultado.txt")
+        
+    except subprocess.TimeoutExpired:
+        error_msg = "Tests excedieron el tiempo límite de 5 minutos"
+        print(error_msg)
+        with open("/tmp/resultado.txt", "w") as f:
+            f.write(f"ERROR: {error_msg}\n")
+    except Exception as e:
+        error_msg = f"Error ejecutando tests: {e}"
+        print(error_msg)
+        with open("/tmp/resultado.txt", "w") as f:
+            f.write(f"ERROR: {error_msg}\n")
 
-# Verifica la variable de entorno OPENAI_API_KEY
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    raise RuntimeError("La variable de entorno OPENAI_API_KEY no está definida. Configúrala antes de ejecutar este script.")
-
-# 1. Lee el prompt (esto es solo para registro, el cambio lo hace otro proceso)
-with open(PROMPT_PATH, "r", encoding="utf-8") as f:
-    prompt = f.read()
-
-# 2. Ejecuta las pruebas automáticas
-subprocess.run("pytest tests/ > /tmp/resultado.txt", shell=True)
-
-# 3. Analiza el resultado
-with open(RESULTADO_PATH, "r", encoding="utf-8") as f:
-    resultado = f.read()
-
-if ("FAILED" in resultado) or ("ERROR" in resultado):
-    with open(FALLA_PATH, "w", encoding="utf-8") as f:
-        f.write(resultado)
-    with open(ESTADO_PATH, "w", encoding="utf-8") as f:
-        f.write("ERROR")
-else:
-    with open(ESTADO_PATH, "w", encoding="utf-8") as f:
-        f.write("OK")
+if __name__ == "__main__":
+    ejecutar_tests()

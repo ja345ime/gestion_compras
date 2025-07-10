@@ -96,18 +96,36 @@ def limpiar_ultimo_error():
 def guardar_contexto_git():
     # Guardar rama actual
     try:
-        subprocess.run("git branch --show-current > /tmp/rama_actual.txt", shell=True, check=False)
+        # FIXED: Use shell=False to prevent command injection
+        try:
+            with open("/tmp/rama_actual.txt", "w") as f:
+                result = subprocess.run(["git", "branch", "--show-current"], shell=False, capture_output=True, text=True, check=False)
+                f.write(result.stdout)
+        except Exception as e:
+            print(f"Error getting current branch: {e}")
     except Exception as e:
         print(f"No se pudo guardar rama actual: {e}")
     # Guardar ramas remotas
     try:
-        subprocess.run("git branch -r > /tmp/ramas_remotas.txt", shell=True, check=False)
+        # FIXED: Use shell=False to prevent command injection
+        try:
+            with open("/tmp/ramas_remotas.txt", "w") as f:
+                result = subprocess.run(["git", "branch", "-r"], shell=False, capture_output=True, text=True, check=False)
+                f.write(result.stdout)
+        except Exception as e:
+            print(f"Error getting remote branches: {e}")
     except Exception as e:
         print(f"No se pudo guardar ramas remotas: {e}")
     # Guardar README.md
     try:
         if Path("README.md").exists():
-            subprocess.run("cat README.md > /tmp/lectura_readme.txt", shell=True, check=False)
+            # FIXED: Use shell=False to prevent command injection
+            try:
+                with open("/tmp/lectura_readme.txt", "w") as f:
+                    with open("README.md", "r") as readme:
+                        f.write(readme.read())
+            except Exception as e:
+                print(f"Error reading README.md: {e}")
         else:
             README_TMP_FILE.write_text("(No existe README.md)", encoding="utf-8")
     except Exception as e:
