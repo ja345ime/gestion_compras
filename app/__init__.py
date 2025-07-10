@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+import secrets
+import warnings
 
 import click
 from functools import wraps
@@ -65,8 +67,15 @@ def create_app(config_name: str | None = None) -> Flask:
         static_folder=os.path.join(BASE_DIR, 'static'),
     )
 
-    # Configuración principal
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura')
+    # Configuración principal - FIXED: Secure secret key handling
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        if os.environ.get('FLASK_ENV') == 'production' or os.environ.get('ENVIRONMENT') == 'production':
+            raise ValueError("SECRET_KEY environment variable must be set in production")
+        SECRET_KEY = secrets.token_hex(32)  # Strong random key for development
+        warnings.warn("Using auto-generated SECRET_KEY. Set SECRET_KEY environment variable for production.")
+    
+    app.config['SECRET_KEY'] = SECRET_KEY
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
